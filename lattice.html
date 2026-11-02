@@ -1,0 +1,2050 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lattice Studio</title>
+  <style>
+:root {
+  --bg: #0e0f13;
+  --panel: #16181f;
+  --panel-2: #1d2029;
+  --line: #2a2e3a;
+  --text: #e7e9ef;
+  --muted: #8b90a0;
+  --accent: #6c8cff;
+  --accent-2: #ff5fa8;
+  --danger: #ff6b6b;
+  --radius: 8px;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden; }
+body {
+  display: grid;
+  grid-template-columns: 236px 1fr 320px;
+  grid-template-rows: 48px 1fr 52px;
+  grid-template-areas: "top top top" "left stage right" "time time right";
+}
+button, select, input, textarea { font: inherit; color: inherit; }
+button {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 10px; cursor: pointer; white-space: nowrap;
+}
+button:hover { border-color: #3c4253; background: #232733; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.accent { background: transparent; border-color: var(--accent-2); color: #ffd0e6; }
+button.danger:hover { border-color: var(--danger); color: var(--danger); }
+button.icon { padding: 6px 10px; min-width: 34px; }
+button:disabled { opacity: .45; cursor: default; }
+select, input[type=text], input[type=number], textarea {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px;
+}
+textarea { width: 100%; resize: vertical; min-height: 64px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+
+#topbar {
+  grid-area: top; display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 6px; margin-right: 8px; color: var(--accent); }
+.brand b { color: var(--text); font-size: 15px; letter-spacing: .2px; }
+.brand span { color: var(--muted); }
+.btn-group { display: flex; }
+.btn-group button { border-radius: 0; margin-left: -1px; }
+.btn-group button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
+.btn-group button:last-child { border-radius: 0 6px 6px 0; }
+.grow { flex: 1; }
+
+#left, #right { background: var(--panel); overflow-y: auto; }
+#left { grid-area: left; border-right: 1px solid var(--line); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+#right { grid-area: right; border-left: 1px solid var(--line); }
+.panel-title { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 2px 2px 0; }
+.panel-title.small { margin-top: 6px; }
+#layerList { display: flex; flex-direction: column; gap: 3px; }
+.layer {
+  display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-radius: 6px;
+  border: 1px solid transparent; cursor: pointer; user-select: none;
+}
+.layer:hover { background: var(--panel-2); }
+.layer.sel { background: #222842; border-color: #3a4780; }
+.layer .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer .type { font-size: 10.5px; color: var(--muted); }
+.layer .eye { background: none; border: 0; padding: 0 2px; color: var(--muted); font-size: 13px; }
+.layer.hidden .name { color: var(--muted); text-decoration: line-through; }
+.layer.scene { margin-bottom: 4px; border-bottom: 1px solid var(--line); border-radius: 6px 6px 0 0; }
+.add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.add-grid button { font-size: 12px; padding: 7px 6px; }
+.layer-actions { display: flex; gap: 5px; }
+.layer-actions button { flex: 1; padding: 6px 4px; font-size: 12px; }
+.hint { color: var(--muted); font-size: 11.5px; line-height: 1.5; margin-top: auto; }
+
+#stage { grid-area: stage; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background: repeating-conic-gradient(#121319 0 25%, #0f1015 0 50%) 0 0 / 22px 22px; }
+#frame { position: relative; box-shadow: 0 0 0 1px #2c3140, 0 12px 40px rgba(0,0,0,.5); background: #000; }
+#hud { position: absolute; left: 10px; top: 8px; color: var(--muted); font-size: 11px; pointer-events: none; }
+
+#timeline { grid-area: time; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: var(--panel); border-top: 1px solid var(--line); }
+#timeLabel { font-variant-numeric: tabular-nums; min-width: 92px; color: var(--muted); }
+#fpsLabel { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 52px; text-align: right; }
+#scrub { flex: 1; }
+label.inline { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+
+/* properties */
+.props-head { position: sticky; top: 0; z-index: 2; background: var(--panel); padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 6px; align-items: center; }
+.props-head input { flex: 1; min-width: 0; font-weight: 600; }
+.props-head .tag { font-size: 11px; color: var(--muted); }
+details.group { border-bottom: 1px solid var(--line); }
+details.group > summary { list-style: none; cursor: pointer; padding: 9px 12px; font-weight: 600; font-size: 12px; display: flex; justify-content: space-between; }
+details.group > summary::-webkit-details-marker { display: none; }
+details.group > summary::after { content: "+"; color: var(--muted); }
+details.group[open] > summary::after { content: "\2212"; }
+.fields { padding: 2px 12px 10px; display: flex; flex-direction: column; gap: 7px; }
+.field { display: grid; grid-template-columns: 112px 1fr 56px; align-items: center; gap: 8px; }
+.field > label { color: #c3c7d3; font-size: 12px; line-height: 1.2; cursor: default; }
+.field.wide { grid-template-columns: 112px 1fr; }
+.field.block { grid-template-columns: 1fr; }
+.field input[type=number] { width: 56px; padding: 3px 4px; font-size: 12px; text-align: right; }
+.field select { width: 100%; }
+.field input[type=color] { width: 100%; height: 26px; padding: 0 2px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.switch { justify-self: start; width: 18px; height: 18px; accent-color: var(--accent); }
+.media-box { display: flex; flex-direction: column; gap: 6px; }
+.media-row { display: flex; gap: 6px; align-items: center; }
+.media-row button, .media-row select { flex: 1; font-size: 12px; padding: 5px 6px; }
+.media-thumb { width: 100%; height: 74px; border-radius: 6px; background: #0b0c10 center/cover no-repeat; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 11px; overflow: hidden; }
+.media-thumb video { width: 100%; height: 100%; object-fit: cover; }
+
+/* modal */
+#modal { position: fixed; inset: 0; background: rgba(5,6,10,.7); display: flex; align-items: center; justify-content: center; z-index: 50; }
+#modal[hidden] { display: none; }
+.modal-card { width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.modal-head h2 { margin: 0; font-size: 16px; }
+.modal-card p { color: #c3c7d3; line-height: 1.55; margin: 6px 0 12px; }
+.modal-card code { background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.form-row label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.progress { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin: 10px 0 4px; }
+.progress > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .1s; }
+.code { min-height: 170px; }
+
+#toast { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); background: #262b3a; border: 1px solid #3a4258; padding: 9px 14px; border-radius: 8px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 60; max-width: 80vw; }
+#toast.show { opacity: 1; }
+
+@media (max-width: 900px) {
+  body { grid-template-columns: 1fr; grid-template-rows: 48px 45vh 52px auto auto; grid-template-areas: "top" "stage" "time" "right" "left"; overflow: auto; height: auto; }
+  html, body { overflow: auto; }
+  #topbar { overflow-x: auto; }
+}
+
+</style>
+  <!-- three.js r147 classic build + add-ons (same list as LATTICE_DEPS in lattice-engine.js) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+  <script>
+/*!
+ * Lattice engine v1.0 — procedural 3D grids, patterns and motion graphics.
+ * Shared by the editor (index.html), the <lattice-scene> widget and standalone exports.
+ * Requires three.js r147 (classic build) + the examples/js add-ons listed in LATTICE_DEPS.
+ */
+(function (root) {
+  'use strict';
+
+  var THREE_BASE = 'https://cdn.jsdelivr.net/npm/three@0.147.0/';
+  var LATTICE_DEPS = [
+    'build/three.min.js',
+    'examples/js/controls/OrbitControls.js',
+    'examples/js/environments/RoomEnvironment.js',
+    'examples/js/shaders/CopyShader.js',
+    'examples/js/shaders/LuminosityHighPassShader.js',
+    'examples/js/postprocessing/EffectComposer.js',
+    'examples/js/postprocessing/RenderPass.js',
+    'examples/js/postprocessing/ShaderPass.js',
+    'examples/js/postprocessing/UnrealBloomPass.js'
+  ].map(function (p) { return THREE_BASE + p; });
+
+  // Everything below lives in one self-contained function so the editor can inline
+  // its source (LatticeFactory.toString()) into standalone HTML exports.
+  function LatticeFactory(THREE) {
+    var TAU = Math.PI * 2, DEG = Math.PI / 180, MAX_INSTANCES = 40000;
+
+    // ---------- math helpers ----------
+    function mulberry(seed) {
+      var a = (seed >>> 0) || 1;
+      return function () {
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        var t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    var PERM = new Uint8Array(512);
+    (function () {
+      var r = mulberry(1337), p = [], i;
+      for (i = 0; i < 256; i++) p[i] = i;
+      for (i = 255; i > 0; i--) { var j = Math.floor(r() * (i + 1)), tmp = p[i]; p[i] = p[j]; p[j] = tmp; }
+      for (i = 0; i < 512; i++) PERM[i] = p[i & 255];
+    })();
+    function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+    function mix(a, b, t) { return a + (b - a) * t; }
+    function grad(h, x, y, z) {
+      var u = h < 8 ? x : y, v = h < 4 ? y : (h === 12 || h === 14 ? x : z);
+      return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
+    }
+    // Classic Perlin noise, roughly -1..1
+    function noise3(x, y, z) {
+      var fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z);
+      var X = fx & 255, Y = fy & 255, Z = fz & 255;
+      x -= fx; y -= fy; z -= fz;
+      var u = fade(x), v = fade(y), w = fade(z);
+      var A = PERM[X] + Y, AA = PERM[A] + Z, AB = PERM[A + 1] + Z, B = PERM[X + 1] + Y, BA = PERM[B] + Z, BB = PERM[B + 1] + Z;
+      return mix(
+        mix(mix(grad(PERM[AA] & 15, x, y, z), grad(PERM[BA] & 15, x - 1, y, z), u),
+            mix(grad(PERM[AB] & 15, x, y - 1, z), grad(PERM[BB] & 15, x - 1, y - 1, z), u), v),
+        mix(mix(grad(PERM[AA + 1] & 15, x, y, z - 1), grad(PERM[BA + 1] & 15, x - 1, y, z - 1), u),
+            mix(grad(PERM[AB + 1] & 15, x, y - 1, z - 1), grad(PERM[BB + 1] & 15, x - 1, y - 1, z - 1), u), v), w);
+    }
+    function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+    function smooth(a, b, x) { var t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+    function fract(x) { return x - Math.floor(x); }
+    // Colours: designers pick sRGB hex; three r147 works in linear space.
+    function lin(hex) { return new THREE.Color(hex).convertSRGBToLinear(); }
+    function uid() { return 'l' + Math.random().toString(36).slice(2, 9); }
+
+    // ---------- parameter schema (drives the editor UI, defaults and save format) ----------
+    // Flags: r = rebuild geometry, m = rebuild material, c = recolour, nr = skip on randomise.
+    function R(key, label, min, max, step, def, f) { return Object.assign({ key: key, label: label, type: 'range', min: min, max: max, step: step, def: def }, f || {}); }
+    function S(key, label, options, def, f) { return Object.assign({ key: key, label: label, type: 'select', options: options, def: def }, f || {}); }
+    function COL(key, label, def, f) { return Object.assign({ key: key, label: label, type: 'color', def: def }, f || {}); }
+    function BOOL(key, label, def, f) { return Object.assign({ key: key, label: label, type: 'bool', def: def }, f || {}); }
+    function MEDIA(key, label, f) { return Object.assign({ key: key, label: label, type: 'media', def: '' }, f || {}); }
+    function TEXT(key, label, def, f) { return Object.assign({ key: key, label: label, type: 'text', def: def }, f || {}); }
+
+    var G_TRANSFORM = { name: 'Transform', fields: [
+      R('posX', 'Position X', -30, 30, 0.1, 0, { nr: 1 }), R('posY', 'Position Y', -30, 30, 0.1, 0, { nr: 1 }), R('posZ', 'Position Z', -30, 30, 0.1, 0, { nr: 1 }),
+      R('rotX', 'Rotate X', -180, 180, 1, 0, { nr: 1 }), R('rotY', 'Rotate Y', -180, 180, 1, 0, { nr: 1 }), R('rotZ', 'Rotate Z', -180, 180, 1, 0, { nr: 1 }),
+      R('scale', 'Scale', 0.05, 5, 0.01, 1, { nr: 1 }), R('spin', 'Spin (turns per loop)', -4, 4, 1, 0)
+    ] };
+    function lookGroup(over) {
+      over = over || {};
+      return { name: 'Look', fields: [
+        S('material', 'Material', ['standard', 'metal', 'glass', 'matte', 'toon', 'glow', 'wireframe'], over.material || 'standard', { m: 1 }),
+        COL('colorA', 'Color A', over.colorA || '#4f7cff', { c: 1 }), COL('colorB', 'Color B', over.colorB || '#ff4fa3', { c: 1 }),
+        S('colorMode', 'Color mode', over.colorModes || ['solid', 'index', 'position', 'radial', 'random', 'wave', 'noise', 'image'], over.colorMode || 'position', { c: 1 }),
+        R('roughness', 'Roughness', 0, 1, 0.01, 0.35, { m: 1 }), R('metalness', 'Metalness', 0, 1, 0.01, 0.1, { m: 1 }),
+        R('emissive', 'Glow amount', 0, 3, 0.01, 0, { m: 1 }), R('opacity', 'Opacity', 0.02, 1, 0.01, 1, { m: 1 }),
+        S('blend', 'Blending', ['normal', 'additive'], 'normal', { m: 1 }),
+        MEDIA('media', 'Image / video texture', { r: 1 }),
+        S('mediaMode', 'Media mapping', over.mediaModes || [['none', 'Off'], ['each', 'On every element'], ['mosaic', 'Split across elements']], over.mediaMode || 'each', { r: 1 })
+      ] };
+    }
+
+    var SCHEMA = {
+      grid: [
+        { name: 'Pattern', fields: [
+          S('distribution', 'Grid type', [['square', 'Square'], ['hex', 'Hexagonal'], ['radial', 'Radial rings'], ['spiral', 'Phyllotaxis spiral'], ['sphere', 'Sphere (Fibonacci)'], ['cylinder', 'Cylinder'], ['torus', 'Torus'], ['random', 'Random cloud']], 'square', { r: 1, nr: 1 }),
+          S('orientation', 'Plane', [['floor', 'Floor (XZ)'], ['wall', 'Wall (XY)']], 'floor', { r: 1, nr: 1 }),
+          R('countX', 'Count X / around', 1, 200, 1, 24, { r: 1, nr: 1 }), R('countY', 'Count Y / rows', 1, 200, 1, 24, { r: 1, nr: 1 }), R('countZ', 'Count Z / layers', 1, 40, 1, 1, { r: 1, nr: 1 }),
+          R('spacing', 'Spacing', 0.05, 4, 0.01, 0.5, { r: 1 }), R('size', 'Radius (curved grids)', 0.5, 30, 0.1, 6, { r: 1 }),
+          R('jitter', 'Jitter', 0, 2, 0.01, 0, { r: 1 }), R('seed', 'Seed', 1, 999, 1, 1, { r: 1, nr: 1 })
+        ] },
+        { name: 'Element', fields: [
+          S('shape', 'Shape', ['cube', 'sphere', 'cylinder', 'cone', 'torus', 'plane', 'ring', 'octahedron', 'tetrahedron', 'capsule'], 'cube', { r: 1 }),
+          R('elementSize', 'Element size', 0.01, 4, 0.01, 0.3), R('stretch', 'Stretch (height)', 0.05, 10, 0.01, 1),
+          BOOL('align', 'Face outward', true), R('falloff', 'Edge falloff', 0, 1, 0.01, 0)
+        ] },
+        { name: 'Wave', fields: [
+          S('waveType', 'Wave shape', [['linear', 'Linear'], ['diagonal', 'Diagonal'], ['radial', 'Radial ripple'], ['spherical', 'Spherical'], ['index', 'By index']], 'radial'),
+          S('waveAffect', 'Wave drives', [['position', 'Position'], ['scale', 'Scale'], ['height', 'Height (bars)'], ['rotation', 'Rotation'], ['all', 'Position + scale']], 'position'),
+          R('waveAmp', 'Amplitude', 0, 6, 0.01, 0.6), R('waveFreq', 'Frequency', 0, 6, 0.01, 0.8), R('waveCycles', 'Speed (cycles per loop)', -8, 8, 1, 1)
+        ] },
+        { name: 'Noise', fields: [
+          R('noiseAmp', 'Amount', 0, 6, 0.01, 0), R('noiseScale', 'Scale', 0.01, 2, 0.01, 0.25), R('noiseCycles', 'Speed (cycles per loop)', 0, 6, 1, 1)
+        ] },
+        { name: 'Deform', fields: [
+          R('twist', 'Twist / swirl (deg)', -720, 720, 1, 0), R('twistCycles', 'Twist oscillation', 0, 6, 1, 0),
+          R('explode', 'Explode', 0, 10, 0.01, 0), R('explodeCycles', 'Explode pulse', 0, 6, 1, 0),
+          R('rotWave', 'Rotate with wave (deg)', -360, 360, 1, 0), R('rotCycles', 'Element spin', -8, 8, 1, 0), R('stagger', 'Spin stagger', 0, 10, 0.01, 0)
+        ] },
+        { name: 'Image drive', fields: [
+          R('imageHeight', 'Image → height', -6, 6, 0.01, 0), R('imageScale', 'Image → size (halftone)', 0, 1, 0.01, 0)
+        ] },
+        lookGroup(),
+        G_TRANSFORM
+      ],
+      curves: [
+        { name: 'Curve', fields: [
+          S('curveType', 'Curve', [['wave', 'Sine wave'], ['helix', 'Helix'], ['spiral', 'Spiral'], ['lissajous', 'Lissajous'], ['knot', 'Torus knot'], ['rose', 'Rose'], ['circle', 'Circle'], ['sphere', 'Spherical spiral']], 'wave', { r: 1 }),
+          R('radius', 'Radius / width', 0.2, 20, 0.01, 5), R('height', 'Height', 0, 20, 0.01, 2), R('turns', 'Turns', 0.25, 30, 0.25, 2),
+          R('p', 'Frequency P', 1, 12, 1, 3), R('q', 'Frequency Q', 1, 12, 1, 2), R('segments', 'Smoothness', 16, 800, 1, 240, { r: 1, nr: 1 })
+        ] },
+        { name: 'Repeat', fields: [
+          R('count', 'Count', 1, 80, 1, 24, { r: 1 }),
+          S('arrange', 'Arrangement', [['stack', 'Stack (depth)'], ['vertical', 'Stack (vertical)'], ['radial', 'Radial'], ['nested', 'Nested (scale)'], ['fan', 'Fan']], 'stack'),
+          R('spread', 'Spread', 0, 4, 0.01, 0.25), R('stagger', 'Phase stagger', 0, 2, 0.01, 0.12)
+        ] },
+        { name: 'Render', fields: [
+          S('render', 'Render as', [['ribbon', 'Ribbon'], ['tube', 'Tube'], ['line', 'Line'], ['dots', 'Dots']], 'ribbon', { r: 1 }),
+          R('thickness', 'Thickness / width', 0.005, 2, 0.005, 0.12), R('ribbonTwist', 'Ribbon twist (deg)', -720, 720, 1, 0)
+        ] },
+        { name: 'Motion', fields: [
+          R('flowCycles', 'Flow (cycles per loop)', -8, 8, 1, 1),
+          R('morphAmp', 'Morph amount', 0, 5, 0.01, 0.6), R('morphFreq', 'Morph frequency', 0, 8, 0.01, 1.2), R('morphCycles', 'Morph speed', -8, 8, 1, 1),
+          BOOL('drawOn', 'Draw on / off', false), R('drawCycles', 'Draw cycles per loop', 1, 8, 1, 1)
+        ] },
+        lookGroup({ colorModes: ['solid', 'index', 'position', 'random'], colorMode: 'index', mediaModes: [['none', 'Off'], ['each', 'Along each curve']] }),
+        G_TRANSFORM
+      ],
+      globe: [
+        { name: 'Globe', fields: [
+          S('style', 'Style', [['dots', 'Dot matrix'], ['wire', 'Wireframe lat/long'], ['solid', 'Solid / textured']], 'dots', { r: 1 }),
+          R('radius', 'Radius', 0.5, 20, 0.1, 5, { r: 1 }), R('tilt', 'Axis tilt (deg)', -90, 90, 1, 18),
+          R('dotCount', 'Dot count', 200, 30000, 50, 9000, { r: 1, nr: 1 }), R('dotSize', 'Dot size', 0.005, 0.4, 0.001, 0.04, { r: 1 }),
+          BOOL('landMask', 'Use texture as land mask', true, { r: 1 }), R('maskThreshold', 'Mask threshold', 0, 1, 0.01, 0.5, { r: 1 }), BOOL('maskInvert', 'Invert mask', false, { r: 1 }),
+          R('latLines', 'Latitude lines', 2, 60, 1, 12, { r: 1 }), R('lonLines', 'Longitude lines', 2, 90, 1, 24, { r: 1 }),
+          R('coreOpacity', 'Core sphere opacity', 0, 1, 0.01, 0.85, { r: 1 })
+        ] },
+        { name: 'Arcs & markers', fields: [
+          R('arcCount', 'Arc count', 0, 120, 1, 16, { r: 1 }), R('arcHeight', 'Arc height', 0, 1.5, 0.01, 0.35, { r: 1 }),
+          R('arcCycles', 'Arc speed (per loop)', 1, 8, 1, 1), R('arcTrail', 'Trail length', 0.05, 1, 0.01, 0.35), R('arcBase', 'Faint full arc', 0, 1, 0.01, 0.15, { r: 1 }),
+          COL('arcColor', 'Arc color', '#7ff0ff', { r: 1 }), BOOL('markers', 'Pulsing markers', true, { r: 1 }),
+          TEXT('points', 'Locations (lat,lng per line)', '', { r: 1, nr: 1 }), R('seed', 'Seed', 1, 999, 1, 3, { r: 1, nr: 1 })
+        ] },
+        { name: 'Atmosphere', fields: [
+          R('atmosphere', 'Glow', 0, 2, 0.01, 0.8, { r: 1 }), COL('atmoColor', 'Glow color', '#4fb4ff', { r: 1 })
+        ] },
+        lookGroup({ colorModes: ['solid', 'position', 'random'], colorMode: 'solid', colorA: '#9fd4ff', colorB: '#0b1d3a', mediaModes: [['none', 'Off'], ['each', 'Wrap texture']] }),
+        G_TRANSFORM
+      ],
+      particles: [
+        { name: 'Field', fields: [
+          S('shape', 'Shape', [['sphere', 'Sphere volume'], ['shell', 'Sphere shell'], ['box', 'Box'], ['disc', 'Disc'], ['ring', 'Ring'], ['galaxy', 'Galaxy'], ['column', 'Column']], 'sphere', { r: 1 }),
+          R('count', 'Count', 100, 40000, 100, 6000, { r: 1, nr: 1 }), R('spread', 'Spread', 0.5, 40, 0.1, 10, { r: 1 }),
+          R('size', 'Particle size', 0.005, 1, 0.005, 0.08, { m: 1 }), R('arms', 'Galaxy arms', 1, 8, 1, 3, { r: 1 }), R('seed', 'Seed', 1, 999, 1, 7, { r: 1, nr: 1 })
+        ] },
+        { name: 'Motion', fields: [
+          R('flow', 'Flow amount', 0, 6, 0.01, 0.6), R('flowScale', 'Flow scale', 0.01, 1, 0.01, 0.15), R('flowCycles', 'Flow speed', 0, 6, 1, 1)
+        ] },
+        lookGroup({ colorModes: ['solid', 'random', 'radial', 'position'], colorMode: 'random', blend: 'additive', mediaModes: [['none', 'Off'], ['each', 'Use as sprite']], mediaMode: 'none' }),
+        G_TRANSFORM
+      ],
+      media: [
+        { name: 'Surface', fields: [
+          S('surface', 'Surface', [['plane', 'Flat plane'], ['curved', 'Curved screen'], ['cylinder', 'Cylinder'], ['sphere', 'Sphere'], ['cube', 'Cube'], ['torus', 'Torus']], 'plane', { r: 1 }),
+          R('width', 'Width', 0.5, 40, 0.1, 8, { r: 1 }), R('height', 'Height', 0.5, 40, 0.1, 4.5, { r: 1 }), BOOL('autoAspect', 'Match media aspect', true, { r: 1 }),
+          R('curve', 'Curvature (deg)', 0, 340, 1, 60, { r: 1 }), R('detail', 'Mesh detail', 8, 200, 1, 96, { r: 1, nr: 1 })
+        ] },
+        { name: 'Wave', fields: [
+          S('waveDir', 'Direction', [['x', 'Horizontal'], ['y', 'Vertical'], ['diagonal', 'Diagonal'], ['radial', 'Radial']], 'x'),
+          R('waveAmp', 'Amplitude', 0, 3, 0.01, 0.3), R('waveFreq', 'Frequency', 0, 6, 0.01, 0.8), R('waveCycles', 'Speed (cycles per loop)', -8, 8, 1, 1)
+        ] },
+        lookGroup({ colorModes: ['solid'], colorMode: 'solid', colorA: '#ffffff', material: 'standard', mediaModes: [['each', 'On surface']] }),
+        G_TRANSFORM
+      ]
+    };
+
+    var SETTINGS_SCHEMA = [
+      { name: 'Timeline', fields: [R('duration', 'Loop length (s)', 1, 60, 0.5, 8, { nr: 1 }), BOOL('loop', 'Seamless loop', true, { nr: 1 }), R('speed', 'Playback speed', 0.1, 3, 0.05, 1, { nr: 1 })] },
+      { name: 'Camera', fields: [
+        S('camMode', 'Camera move', [['orbit', 'Orbit'], ['pendulum', 'Pendulum swing'], ['dolly', 'Dolly in / out'], ['pan', 'Pan / truck'], ['crane', 'Crane up / down'], ['flythrough', 'Fly-through'], ['topdown', 'Top-down spin'], ['free', 'Free (drag to frame)']], 'orbit'),
+        R('fov', 'Field of view', 10, 110, 1, 40), R('camDistance', 'Distance', 1, 150, 0.1, 22), R('camHeight', 'Height', -80, 80, 0.1, 8),
+        R('camCycles', 'Move speed (per loop)', -4, 4, 1, 1), R('camAmount', 'Move amount', 0, 1, 0.01, 0.5), R('camShake', 'Handheld shake', 0, 1, 0.01, 0),
+        R('targetY', 'Look-at height', -20, 20, 0.1, 0), BOOL('interactive', 'Viewers can drag (embed)', false, { nr: 1 })
+      ] },
+      { name: 'Background', fields: [
+        S('bgType', 'Background', [['radial', 'Radial gradient'], ['linear', 'Linear gradient'], ['solid', 'Solid'], ['transparent', 'Transparent']], 'radial'),
+        COL('bg1', 'Color 1', '#141a33'), COL('bg2', 'Color 2', '#03040a'), R('fog', 'Fog', 0, 1, 0.01, 0)
+      ] },
+      { name: 'Light', fields: [
+        R('exposure', 'Exposure', 0.1, 3, 0.01, 1), R('ambient', 'Ambient', 0, 3, 0.01, 0.35), R('keyIntensity', 'Key light', 0, 6, 0.01, 1.4), COL('keyColor', 'Key color', '#ffffff'),
+        R('keyAngle', 'Key angle', 0, 360, 1, 40), R('envLight', 'Reflections', 0, 3, 0.01, 0.6)
+      ] },
+      { name: 'Post FX', fields: [R('bloom', 'Bloom', 0, 3, 0.01, 0.5), R('bloomRadius', 'Bloom radius', 0, 1, 0.01, 0.4), R('bloomThreshold', 'Bloom threshold', 0, 1, 0.01, 0.6)] }
+    ];
+
+    function fieldsOf(groups) { var out = {}; groups.forEach(function (g) { g.fields.forEach(function (f) { out[f.key] = f; }); }); return out; }
+    var FIELD_INDEX = {}; Object.keys(SCHEMA).forEach(function (t) { FIELD_INDEX[t] = fieldsOf(SCHEMA[t]); });
+    var SETTINGS_INDEX = fieldsOf(SETTINGS_SCHEMA);
+    function defaultsFor(groups) { var o = {}; groups.forEach(function (g) { g.fields.forEach(function (f) { o[f.key] = f.def; }); }); return o; }
+    var LAYER_NAMES = { grid: 'Grid', curves: 'Curves', globe: 'Globe', particles: 'Particles', media: 'Media surface' };
+
+    function newLayer(type, params) {
+      return { id: uid(), type: type, name: LAYER_NAMES[type] || type, visible: true, params: Object.assign(defaultsFor(SCHEMA[type]), params || {}) };
+    }
+    // Fills defaults in place so the editor and the engine share one object.
+    function normalize(scene) {
+      scene = scene || {};
+      scene.version = 1;
+      scene.settings = Object.assign(defaultsFor(SETTINGS_SCHEMA), { aspect: '16:9' }, scene.settings || {});
+      scene.layers = (scene.layers || []).filter(function (l) { return SCHEMA[l.type]; });
+      scene.layers.forEach(function (l) {
+        l.id = l.id || uid(); l.name = l.name || LAYER_NAMES[l.type]; if (l.visible === undefined) l.visible = true;
+        var d = defaultsFor(SCHEMA[l.type]); l.params = l.params || {};
+        Object.keys(d).forEach(function (k) { if (l.params[k] === undefined) l.params[k] = d[k]; });
+      });
+      return scene;
+    }
+
+    // ---------- media ----------
+    function builtinTexture(name) {
+      var c = document.createElement('canvas'); c.width = 1024; c.height = 576;
+      var g = c.getContext('2d');
+      if (name === 'builtin:stripes') {
+        for (var i = 0; i < 32; i++) { g.fillStyle = i % 2 ? '#111' : '#f4f4f4'; g.fillRect(i * 32, 0, 32, 576); }
+      } else {
+        var gr = g.createLinearGradient(0, 0, 1024, 576);
+        gr.addColorStop(0, '#2b5cff'); gr.addColorStop(0.5, '#b44cff'); gr.addColorStop(1, '#ff6a3d');
+        g.fillStyle = gr; g.fillRect(0, 0, 1024, 576);
+        g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 2;
+        for (var x = 0; x <= 1024; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 576); g.stroke(); }
+        for (var y = 0; y <= 576; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(1024, y); g.stroke(); }
+        g.fillStyle = '#fff'; g.font = 'bold 150px Helvetica, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText('LATTICE', 512, 288);
+      }
+      return c;
+    }
+    function isVideoUrl(url, kinds) {
+      if (kinds[url]) return kinds[url] === 'video';
+      return /^data:video\//.test(url) || /\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(url);
+    }
+
+    // ---------- materials ----------
+    var dotTexture = null;
+    function getDotTexture() {
+      if (dotTexture) return dotTexture;
+      var c = document.createElement('canvas'); c.width = c.height = 64;
+      var g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+      dotTexture = new THREE.CanvasTexture(c); dotTexture.encoding = THREE.sRGBEncoding;
+      return dotTexture;
+    }
+    function makeMaterial(p, o) {
+      o = o || {};
+      var additive = p.blend === 'additive';
+      var opacity = o.opacity !== undefined ? o.opacity : p.opacity;
+      var common = {
+        transparent: opacity < 1 || additive, opacity: opacity,
+        side: o.side || THREE.FrontSide, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+        depthWrite: !additive && opacity >= 1, vertexColors: !!o.vertexColors
+      };
+      var m;
+      switch (o.forceType || p.material) {
+        case 'metal': m = new THREE.MeshStandardMaterial(Object.assign(common, { metalness: 1, roughness: p.roughness })); break;
+        case 'glass': m = new THREE.MeshPhysicalMaterial(Object.assign(common, { metalness: 0, roughness: p.roughness, transmission: 1, thickness: 0.8, ior: 1.45 })); break;
+        case 'matte': m = new THREE.MeshLambertMaterial(common); break;
+        case 'toon': m = new THREE.MeshToonMaterial(common); break;
+        case 'glow': m = new THREE.MeshBasicMaterial(common); break;
+        case 'wireframe': m = new THREE.MeshBasicMaterial(Object.assign(common, { wireframe: true })); break;
+        default: m = new THREE.MeshStandardMaterial(Object.assign(common, { metalness: p.metalness, roughness: p.roughness }));
+      }
+      if (o.color) m.color.copy(o.color); else m.color.setRGB(1, 1, 1);
+      if (p.material === 'glow') m.color.multiplyScalar(1 + p.emissive * 1.5);
+      if (o.map) { m.map = o.map; m.needsUpdate = true; }
+      if (m.emissive && p.emissive > 0) {
+        m.emissive.copy(o.color || lin(p.colorA)).multiplyScalar(p.emissive);
+        if (o.map) { m.emissiveMap = o.map; m.emissive.setRGB(p.emissive, p.emissive, p.emissive); }
+      }
+      if (m.envMapIntensity !== undefined && o.env !== undefined) m.envMapIntensity = o.env;
+      if (o.mosaic) {
+        m.onBeforeCompile = function (sh) {
+          sh.vertexShader = sh.vertexShader
+            .replace('#include <common>', '#include <common>\nattribute vec4 aUvRect;')
+            .replace('#include <uv_vertex>', '#include <uv_vertex>\n#ifdef USE_UV\nvUv = vUv * aUvRect.zw + aUvRect.xy;\n#endif');
+        };
+        m.customProgramCacheKey = function () { return 'lattice-mosaic'; };
+      }
+      return m;
+    }
+    function colorAt(p, f, out) {
+      var a = lin(p.colorA), b = lin(p.colorB);
+      return out.copy(a).lerp(b, clamp(f, 0, 1));
+    }
+
+    // ---------- layers ----------
+    function Layer(engine, data) {
+      this.e = engine; this.d = data; this.p = data.params;
+      this.group = new THREE.Group(); engine.root.add(this.group);
+      this.build();
+    }
+    Layer.prototype.media = function () {
+      var p = this.p;
+      if (!p.media || p.mediaMode === 'none') return null;
+      return this.e.getMedia(p.media);
+    };
+    // Media textures live in the engine cache, so only geometries and materials are freed here.
+    Layer.prototype.clear = function () {
+      this.group.traverse(function (o) {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (m) { m.dispose(); });
+      });
+      while (this.group.children.length) this.group.remove(this.group.children[0]);
+    };
+    Layer.prototype.rebuild = function () { this.clear(); this.build(); };
+    Layer.prototype.dispose = function () { this.clear(); this.e.root.remove(this.group); };
+    Layer.prototype.recolor = function () { this.rebuild(); };
+    Layer.prototype.tick = function () {
+      var p = this.p, g = this.group;
+      g.position.set(p.posX, p.posY, p.posZ);
+      g.rotation.set(p.rotX * DEG, p.rotY * DEG + this.e.ph(p.spin), p.rotZ * DEG);
+      g.scale.setScalar(p.scale);
+      this.update();
+    };
+    function inherit(Child) { Child.prototype = Object.create(Layer.prototype); Child.prototype.constructor = Child; return Child; }
+
+    // ----- Grid / pattern layer -----
+    var GridLayer = inherit(function GridLayer(e, d) { Layer.call(this, e, d); });
+    function elementGeometry(shape) {
+      var g;
+      switch (shape) {
+        case 'sphere': g = new THREE.SphereGeometry(0.5, 16, 12); break;
+        case 'cylinder': g = new THREE.CylinderGeometry(0.5, 0.5, 1, 20); break;
+        case 'cone': g = new THREE.ConeGeometry(0.5, 1, 20); break;
+        case 'torus': g = new THREE.TorusGeometry(0.38, 0.12, 10, 28); g.rotateX(-Math.PI / 2); break;
+        case 'plane': g = new THREE.PlaneGeometry(1, 1); g.rotateX(-Math.PI / 2); break;
+        case 'ring': g = new THREE.RingGeometry(0.28, 0.5, 32); g.rotateX(-Math.PI / 2); break;
+        case 'octahedron': g = new THREE.OctahedronGeometry(0.55); break;
+        case 'tetrahedron': g = new THREE.TetrahedronGeometry(0.6); break;
+        case 'capsule': g = new THREE.CapsuleGeometry(0.28, 0.44, 4, 12); break;
+        default: g = new THREE.BoxGeometry(1, 1, 1);
+      }
+      return g;
+    }
+    GridLayer.prototype.build = function () {
+      var p = this.p, rnd = mulberry(p.seed * 9973 + 7);
+      var cx = Math.max(1, Math.round(p.countX)), cy = Math.max(1, Math.round(p.countY)), cz = Math.max(1, Math.round(p.countZ));
+      var s = p.spacing, Rr = p.size, wall = p.orientation === 'wall';
+      var P = [], planar = false;
+      function push(x, y, z, nx, ny, nz, u, v) { if (P.length < MAX_INSTANCES) P.push([x, y, z, nx, ny, nz, u, v]); }
+      function flat(a, b, c, u, v) {
+        if (wall) push(a, b, c, 0, 0, 1, u, v); else push(a, c, b, 0, 1, 0, u, 1 - v);
+      }
+      var i, ix, iy, iz, n;
+      switch (p.distribution) {
+        case 'hex':
+        case 'square':
+          planar = true;
+          var hex = p.distribution === 'hex';
+          for (iz = 0; iz < cz; iz++) for (iy = 0; iy < cy; iy++) for (ix = 0; ix < cx; ix++) {
+            var a = (ix - (cx - 1) / 2) * s + (hex && iy % 2 ? s / 2 : 0);
+            var b = (iy - (cy - 1) / 2) * s * (hex ? 0.866 : 1);
+            flat(a, b, (iz - (cz - 1) / 2) * s, cx > 1 ? ix / (cx - 1) : 0.5, cy > 1 ? iy / (cy - 1) : 0.5);
+          }
+          break;
+        case 'radial':
+          planar = true;
+          var maxR = cy * s;
+          for (iz = 0; iz < cz; iz++) {
+            var cz0 = (iz - (cz - 1) / 2) * s;
+            flat(0, 0, cz0, 0.5, 0.5);
+            for (iy = 0; iy < cy; iy++) {
+              var r = (iy + 1) * s, m = Math.max(3, Math.round(cx * (iy + 1) / cy));
+              for (ix = 0; ix < m; ix++) {
+                var th = TAU * ix / m + iy * 0.5;
+                var ra = Math.cos(th) * r, rb = Math.sin(th) * r;
+                flat(ra, rb, cz0, 0.5 + ra / (2 * maxR), 0.5 + rb / (2 * maxR));
+              }
+            }
+          }
+          break;
+        case 'spiral':
+          planar = true;
+          n = cx * cy;
+          var maxS = s * 0.5 * Math.sqrt(n);
+          for (i = 0; i < n; i++) {
+            var sr = s * 0.5 * Math.sqrt(i), sth = i * 2.399963;
+            var sa = Math.cos(sth) * sr, sb = Math.sin(sth) * sr;
+            flat(sa, sb, 0, 0.5 + sa / (2 * maxS), 0.5 + sb / (2 * maxS));
+          }
+          break;
+        case 'sphere':
+          n = cx * cy;
+          for (iz = 0; iz < cz; iz++) {
+            var shell = Rr * (iz + 1) / cz;
+            for (i = 0; i < n; i++) {
+              var fy = 1 - 2 * (i + 0.5) / n, fr = Math.sqrt(1 - fy * fy), fth = i * 2.399963;
+              var nx = Math.cos(fth) * fr, nz = Math.sin(fth) * fr;
+              push(nx * shell, fy * shell, nz * shell, nx, fy, nz, fract(Math.atan2(nz, -nx) / TAU + 1), 1 - Math.acos(fy) / Math.PI);
+            }
+          }
+          break;
+        case 'cylinder':
+          for (iy = 0; iy < cy; iy++) for (ix = 0; ix < cx; ix++) {
+            var ct = TAU * ix / cx;
+            push(Math.cos(ct) * Rr, (iy - (cy - 1) / 2) * s, Math.sin(ct) * Rr, Math.cos(ct), 0, Math.sin(ct), ix / cx, cy > 1 ? iy / (cy - 1) : 0.5);
+          }
+          break;
+        case 'torus':
+          var tr = Rr * 0.38;
+          for (iy = 0; iy < cy; iy++) for (ix = 0; ix < cx; ix++) {
+            var tt = TAU * ix / cx, tp = TAU * iy / cy;
+            var tnx = Math.cos(tp) * Math.cos(tt), tny = Math.sin(tp), tnz = Math.cos(tp) * Math.sin(tt);
+            push(Math.cos(tt) * Rr + tnx * tr, tny * tr, Math.sin(tt) * Rr + tnz * tr, tnx, tny, tnz, ix / cx, iy / cy);
+          }
+          break;
+        default: // random cloud
+          n = cx * cy * cz;
+          for (i = 0; i < n; i++) {
+            var rx = (rnd() - 0.5) * 2 * Rr, ry = (rnd() - 0.5) * 2 * Rr, rz = (rnd() - 0.5) * 2 * Rr;
+            var rl = Math.sqrt(rx * rx + ry * ry + rz * rz) || 1;
+            push(rx, ry, rz, rx / rl, ry / rl, rz / rl, 0.5 + rx / (2 * Rr), 0.5 + ry / (2 * Rr));
+          }
+      }
+      n = P.length; this.n = n; this.cx = cx; this.cy = cy; this.planar = planar;
+      var bp = this.bp = new Float32Array(n * 3), bn = this.bn = new Float32Array(n * 3), uv = this.uv = new Float32Array(n * 2);
+      var q0 = this.q0 = new Float32Array(n * 4);
+      var cL = this.cL = new Float32Array(n), cD = this.cD = new Float32Array(n), cR = this.cR = new Float32Array(n), cS = this.cS = new Float32Array(n);
+      var up = new THREE.Vector3(0, 1, 0), nv = new THREE.Vector3(), q = new THREE.Quaternion();
+      var maxRad = 1e-6, maxLen = 1e-6;
+      for (i = 0; i < n; i++) {
+        var pt = P[i];
+        if (p.jitter > 0) { pt[0] += (rnd() - 0.5) * p.jitter * s; pt[1] += (rnd() - 0.5) * p.jitter * s * (planar ? 0 : 1); pt[2] += (rnd() - 0.5) * p.jitter * s; }
+        bp[i * 3] = pt[0]; bp[i * 3 + 1] = pt[1]; bp[i * 3 + 2] = pt[2];
+        bn[i * 3] = pt[3]; bn[i * 3 + 1] = pt[4]; bn[i * 3 + 2] = pt[5];
+        uv[i * 2] = pt[6]; uv[i * 2 + 1] = pt[7];
+        q.setFromUnitVectors(up, nv.set(pt[3], pt[4], pt[5]));
+        q0[i * 4] = q.x; q0[i * 4 + 1] = q.y; q0[i * 4 + 2] = q.z; q0[i * 4 + 3] = q.w;
+        var A, Bc;
+        if (planar && wall) { A = pt[0]; Bc = pt[1]; } else if (planar) { A = pt[0]; Bc = pt[2]; } else { A = pt[0]; Bc = pt[2]; }
+        cL[i] = planar ? A : pt[1];
+        cD[i] = planar ? A + Bc : pt[0] + pt[1];
+        cR[i] = Math.sqrt(A * A + Bc * Bc);
+        cS[i] = Math.sqrt(pt[0] * pt[0] + pt[1] * pt[1] + pt[2] * pt[2]);
+        if (cR[i] > maxRad) maxRad = cR[i];
+        if (cS[i] > maxLen) maxLen = cS[i];
+      }
+      this.maxRad = maxRad; this.maxLen = maxLen;
+      this.rand = new Float32Array(n); for (i = 0; i < n; i++) this.rand[i] = rnd();
+
+      var geo = elementGeometry(p.shape);
+      var media = this.media(), mosaic = media && p.mediaMode === 'mosaic';
+      if (mosaic) {
+        var rect = new Float32Array(n * 4), su = 1 / cx, sv = 1 / cy;
+        if (!planar || p.distribution !== 'square') { su = Math.min(1, 1.5 / Math.sqrt(n)); sv = su; }
+        for (i = 0; i < n; i++) {
+          rect[i * 4] = uv[i * 2] * (1 - su); rect[i * 4 + 1] = uv[i * 2 + 1] * (1 - sv); rect[i * 4 + 2] = su; rect[i * 4 + 3] = sv;
+        }
+        geo.setAttribute('aUvRect', new THREE.InstancedBufferAttribute(rect, 4));
+      }
+      var mat = makeMaterial(p, { map: media ? media.tex : null, mosaic: mosaic, side: (p.shape === 'plane' || p.shape === 'ring') ? THREE.DoubleSide : THREE.FrontSide, env: this.e.data.settings.envLight });
+      var mesh = this.mesh = new THREE.InstancedMesh(geo, mat, Math.max(1, n));
+      mesh.count = n;
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.frustumCulled = false;
+      var col = new THREE.Color(1, 1, 1);
+      for (i = 0; i < Math.max(1, n); i++) mesh.setColorAt(i, col);
+      this.group.add(mesh);
+      this.colorsDirty = true;
+      this.disp = new Float32Array(n);
+      this._tmp = { o: new THREE.Object3D(), q: new THREE.Quaternion(), qs: new THREE.Quaternion(), e: new THREE.Euler(), c: new THREE.Color(), axis: new THREE.Vector3(0, 0, 1) };
+    };
+    GridLayer.prototype.recolor = function () { this.colorsDirty = true; };
+    GridLayer.prototype.update = function () {
+      var p = this.p, e = this.e, n = this.n; if (!n) return;
+      var T = this._tmp, o = T.o, bp = this.bp, bn = this.bn, uvs = this.uv, q0 = this.q0;
+      var wph = e.ph(p.waveCycles), nth = e.ph(p.noiseCycles), ncx = Math.cos(nth), ncy = Math.sin(nth);
+      var twist = p.twist * DEG * (p.twistCycles ? Math.sin(e.ph(p.twistCycles)) : 1);
+      var explode = p.explode * (p.explodeCycles ? 0.5 - 0.5 * Math.cos(e.ph(p.explodeCycles)) : 1);
+      var spin = e.ph(p.rotCycles), coordArr = p.waveType === 'linear' ? this.cL : p.waveType === 'diagonal' ? this.cD : p.waveType === 'spherical' ? this.cS : this.cR;
+      var media = this.media(), needImg = media && media.ready && (p.colorMode === 'image' || p.imageHeight !== 0 || p.imageScale > 0);
+      var px = needImg ? e.sampleMedia(media, 128, 128) : null;
+      var size = p.elementSize, stretch = p.stretch, affect = p.waveAffect, wall = p.orientation === 'wall';
+      var animColor = p.colorMode === 'wave' || p.colorMode === 'noise' || (p.colorMode === 'image' && media && media.kind === 'video');
+      var doColor = this.colorsDirty || animColor;
+      var ca = lin(p.colorA), cb = lin(p.colorB), c = T.c;
+      for (var i = 0; i < n; i++) {
+        var i3 = i * 3;
+        var x = bp[i3], y = bp[i3 + 1], z = bp[i3 + 2], nx = bn[i3], ny = bn[i3 + 1], nz = bn[i3 + 2];
+        var coord = p.waveType === 'index' ? (i / n) * 40 : coordArr[i];
+        var w = Math.sin(coord * p.waveFreq - wph);
+        var d = p.waveAmp * w;
+        var nv = 0;
+        if (p.noiseAmp > 0) { nv = noise3(x * p.noiseScale + ncx, y * p.noiseScale + ncy, z * p.noiseScale); d += nv * p.noiseAmp * 1.6; }
+        var lum = 1, pr = 0, pg = 0, pb = 0;
+        if (px) {
+          var sx = Math.min(127, Math.floor(uvs[i * 2] * 127.999)), sy = Math.min(127, Math.floor((1 - uvs[i * 2 + 1]) * 127.999));
+          var k = (sy * 128 + sx) * 4; pr = px[k]; pg = px[k + 1]; pb = px[k + 2];
+          lum = (0.2126 * pr + 0.7152 * pg + 0.0722 * pb) / 255;
+          d += lum * p.imageHeight;
+        }
+        this.disp[i] = d;
+        // twist / swirl around the vertical (or view) axis
+        if (twist !== 0) {
+          var ang = twist * (this.planar ? this.cR[i] / this.maxRad : (wall ? z : y) / this.maxLen);
+          var ca2 = Math.cos(ang), sa2 = Math.sin(ang);
+          if (this.planar && wall) { var tx = x * ca2 - y * sa2; y = x * sa2 + y * ca2; x = tx; }
+          else { var tx2 = x * ca2 - z * sa2; z = x * sa2 + z * ca2; x = tx2; }
+        }
+        if (explode > 0) {
+          var len = this.cS[i] || 1;
+          x += x / len * explode; y += this.planar ? 0 : y / len * explode; z += z / len * explode;
+          if (this.planar) { if (wall) z += explode * 0.3 * this.rand[i]; else y += explode * 0.3 * this.rand[i]; }
+        }
+        var sc = size, sy2 = size * stretch;
+        if (affect === 'position' || affect === 'all') { x += nx * d; y += ny * d; z += nz * d; }
+        if (affect === 'scale' || affect === 'all') { var f = Math.max(0.02, 1 + d); sc *= f; sy2 *= f; }
+        if (affect === 'height') { sy2 = Math.max(0.02, size * stretch * (1 + d)); x += nx * sy2 * 0.5; y += ny * sy2 * 0.5; z += nz * sy2 * 0.5; }
+        if (p.imageScale > 0 && px) { var hf = mix(1, lum, p.imageScale); sc *= hf; sy2 *= hf; }
+        if (p.falloff > 0) { var fo = 1 - p.falloff * smooth(0.25, 1, this.cR[i] / this.maxRad); sc *= fo; sy2 *= fo; }
+        o.position.set(x, y, z);
+        if (p.align || this.planar) o.quaternion.set(q0[i * 4], q0[i * 4 + 1], q0[i * 4 + 2], q0[i * 4 + 3]); else o.quaternion.set(0, 0, 0, 1);
+        var rot = spin + i * p.stagger * 0.01 * TAU + p.rotWave * DEG * w + (affect === 'rotation' ? d : 0);
+        if (rot !== 0) { T.e.set(rot * 0.7, rot, 0); T.qs.setFromEuler(T.e); o.quaternion.multiply(T.qs); }
+        o.scale.set(sc, sy2, sc);
+        o.updateMatrix();
+        this.mesh.setMatrixAt(i, o.matrix);
+        if (doColor) {
+          var fcol;
+          switch (p.colorMode) {
+            case 'solid': fcol = 0; break;
+            case 'index': fcol = i / Math.max(1, n - 1); break;
+            case 'position': fcol = uvs[i * 2]; break;
+            case 'radial': fcol = this.cR[i] / this.maxRad; break;
+            case 'random': fcol = this.rand[i]; break;
+            case 'wave': fcol = p.waveAmp + p.noiseAmp > 0 ? 0.5 + 0.5 * d / (p.waveAmp + p.noiseAmp * 1.6 + Math.abs(p.imageHeight) + 1e-6) : 0.5 + 0.5 * w; break;
+            case 'noise': fcol = 0.5 + 0.5 * (nv || noise3(x * 0.3 + ncx, y * 0.3 + ncy, z * 0.3)) * 1.4; break;
+            default: fcol = -1;
+          }
+          if (fcol < 0) {
+            if (px) c.setRGB(pr / 255, pg / 255, pb / 255).convertSRGBToLinear(); else c.copy(ca);
+          } else c.copy(ca).lerp(cb, clamp(fcol, 0, 1));
+          this.mesh.setColorAt(i, c);
+        }
+      }
+      this.mesh.instanceMatrix.needsUpdate = true;
+      if (doColor && this.mesh.instanceColor) { this.mesh.instanceColor.needsUpdate = true; this.colorsDirty = false; }
+    };
+
+    // ----- Curves layer -----
+    var CurvesLayer = inherit(function CurvesLayer(e, d) { Layer.call(this, e, d); });
+    var RADIAL = 8;
+    CurvesLayer.prototype.build = function () {
+      var p = this.p, N = clamp(Math.round(p.count), 1, 80), segs = clamp(Math.round(p.segments), 8, 1000);
+      var rnd = mulberry(91);
+      this.N = N; this.segs = segs; this.items = [];
+      this.pts = new Float32Array((segs + 1) * 3);
+      var media = this.media();
+      var mat;
+      if (p.render === 'line') mat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: p.opacity < 1 || p.blend === 'additive', opacity: p.opacity, blending: p.blend === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: p.blend !== 'additive' });
+      else mat = makeMaterial(p, { vertexColors: p.render !== 'dots', side: THREE.DoubleSide, map: media ? media.tex : null, env: this.e.data.settings.envLight });
+      this.mat = mat;
+      var ca = lin(p.colorA), cb = lin(p.colorB), c = new THREE.Color();
+      var k, i, j;
+      if (p.render === 'dots') {
+        var total = Math.min(N * (segs + 1), 60000);
+        this.dpc = Math.floor(total / N);
+        var dm = this.dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.5, 10, 8), mat, N * this.dpc);
+        dm.instanceMatrix.setUsage(THREE.DynamicDrawUsage); dm.frustumCulled = false;
+        for (k = 0; k < N; k++) {
+          var rk = rnd();
+          for (i = 0; i < this.dpc; i++) dm.setColorAt(k * this.dpc + i, colorAt(p, this.colorF(k, i / (this.dpc - 1), rk), c));
+        }
+        this.group.add(dm);
+        this._o = new THREE.Object3D();
+        return;
+      }
+      for (k = 0; k < N; k++) {
+        var rk2 = rnd(), geo = new THREE.BufferGeometry(), obj, nv;
+        if (p.render === 'line') {
+          nv = segs + 1;
+          geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nv * 3), 3).setUsage(THREE.DynamicDrawUsage));
+          var lc = new Float32Array(nv * 3);
+          for (i = 0; i < nv; i++) { colorAt(p, this.colorF(k, i / segs, rk2), c); lc[i * 3] = c.r; lc[i * 3 + 1] = c.g; lc[i * 3 + 2] = c.b; }
+          geo.setAttribute('color', new THREE.BufferAttribute(lc, 3));
+          obj = new THREE.Line(geo, mat);
+        } else {
+          var ring = p.render === 'tube' ? RADIAL + 1 : 2;
+          nv = (segs + 1) * ring;
+          geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nv * 3), 3).setUsage(THREE.DynamicDrawUsage));
+          geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(nv * 3), 3).setUsage(THREE.DynamicDrawUsage));
+          var cc = new Float32Array(nv * 3), uvA = new Float32Array(nv * 2);
+          for (i = 0; i <= segs; i++) {
+            colorAt(p, this.colorF(k, i / segs, rk2), c);
+            for (j = 0; j < ring; j++) {
+              var vi = i * ring + j; cc[vi * 3] = c.r; cc[vi * 3 + 1] = c.g; cc[vi * 3 + 2] = c.b;
+              uvA[vi * 2] = i / segs; uvA[vi * 2 + 1] = j / (ring - 1);
+            }
+          }
+          geo.setAttribute('color', new THREE.BufferAttribute(cc, 3));
+          geo.setAttribute('uv', new THREE.BufferAttribute(uvA, 2));
+          var idx = [];
+          for (i = 0; i < segs; i++) for (j = 0; j < ring - 1; j++) {
+            var a = i * ring + j, b = (i + 1) * ring + j;
+            idx.push(a, b, a + 1, b, b + 1, a + 1);
+          }
+          geo.setIndex(idx);
+          obj = new THREE.Mesh(geo, mat);
+          obj.userData.perSeg = (ring - 1) * 6;
+        }
+        obj.frustumCulled = false;
+        this.group.add(obj);
+        this.items.push(obj);
+      }
+      this.built = false;
+    };
+    CurvesLayer.prototype.colorF = function (k, s, rk) {
+      switch (this.p.colorMode) {
+        case 'index': return this.N > 1 ? k / (this.N - 1) : 0;
+        case 'position': return s;
+        case 'random': return rk;
+        default: return 0;
+      }
+    };
+    CurvesLayer.prototype.point = function (s, k, flow, out) {
+      var p = this.p, Rr = p.radius, H = p.height, P = p.p, Q = p.q, del = flow + k * p.stagger, th, r, x, y, z;
+      switch (p.curveType) {
+        case 'helix': th = TAU * p.turns * s + del; x = Rr * Math.cos(th); y = H * (s - 0.5); z = Rr * Math.sin(th); break;
+        case 'spiral': th = TAU * p.turns * s + del; r = Rr * s; x = r * Math.cos(th); y = H * (s - 0.5); z = r * Math.sin(th); break;
+        case 'lissajous': th = TAU * s; x = Rr * Math.sin(P * th + del); y = Rr * Math.sin(Q * th); z = Rr * 0.5 * Math.cos(Q * th + del); break;
+        case 'knot': th = TAU * s; r = 2 + Math.cos(Q * th); x = r * Math.cos(P * th + del) * Rr / 3; y = -Math.sin(Q * th) * Rr / 3; z = r * Math.sin(P * th + del) * Rr / 3; break;
+        case 'rose': th = TAU * s * Math.max(1, p.turns); r = Rr * Math.cos(P * th + del); x = r * Math.cos(th); y = H * 0.15 * Math.sin(Q * th); z = r * Math.sin(th); break;
+        case 'circle': th = TAU * s + del; x = Rr * Math.cos(th); y = 0; z = Rr * Math.sin(th); break;
+        case 'sphere': th = TAU * p.turns * s + del; var ph = Math.PI * s; x = Rr * Math.sin(ph) * Math.cos(th); y = Rr * Math.cos(ph); z = Rr * Math.sin(ph) * Math.sin(th); break;
+        default: x = (s - 0.5) * 2 * Rr; y = Math.sin(TAU * p.turns * s + del) * H * 0.5; z = 0;
+      }
+      if (p.morphAmp > 0) y += p.morphAmp * Math.sin(TAU * p.morphFreq * s + this.e.ph(p.morphCycles) + k * p.stagger * 3);
+      var kc = k - (this.N - 1) / 2;
+      switch (p.arrange) {
+        case 'stack': z += kc * p.spread; break;
+        case 'vertical': y += kc * p.spread; break;
+        case 'radial': var a = TAU * k / this.N, cs = Math.cos(a), sn = Math.sin(a), tx = x * cs - z * sn; z = x * sn + z * cs; x = tx; break;
+        case 'nested': var sc = 1 + k * p.spread * 0.15; x *= sc; y *= sc; z *= sc; break;
+        case 'fan': var fa = kc * p.spread * 0.15, fc = Math.cos(fa), fs = Math.sin(fa), fx = x * fc - y * fs; y = x * fs + y * fc; x = fx; break;
+      }
+      out[0] = x; out[1] = y; out[2] = z;
+    };
+    CurvesLayer.prototype.update = function () {
+      var p = this.p, e = this.e, N = this.N, segs = this.segs, pts = this.pts, tmp = [0, 0, 0];
+      var flow = e.ph(p.flowCycles), animated = p.flowCycles !== 0 || (p.morphAmp > 0 && p.morphCycles !== 0);
+      var k, i;
+      if (this.dots) {
+        var o = this._o, dpc = this.dpc, th = p.thickness;
+        for (k = 0; k < N; k++) {
+          var win = this.drawWindow(k);
+          for (i = 0; i < dpc; i++) {
+            var s = i / (dpc - 1);
+            this.point(s, k, flow, tmp);
+            o.position.set(tmp[0], tmp[1], tmp[2]);
+            o.scale.setScalar(s >= win[0] && s <= win[1] ? th : 0.0001);
+            o.updateMatrix(); this.dots.setMatrixAt(k * dpc + i, o.matrix);
+          }
+        }
+        this.dots.instanceMatrix.needsUpdate = true;
+        return;
+      }
+      var rebuild = animated || !this.built;
+      for (k = 0; k < N; k++) {
+        var obj = this.items[k], geo = obj.geometry;
+        if (rebuild) {
+          for (i = 0; i <= segs; i++) { this.point(i / segs, k, flow, tmp); pts[i * 3] = tmp[0]; pts[i * 3 + 1] = tmp[1]; pts[i * 3 + 2] = tmp[2]; }
+          if (p.render === 'line') { geo.attributes.position.array.set(pts); geo.attributes.position.needsUpdate = true; }
+          else this.sweep(geo, pts, p.render === 'tube');
+          geo.computeBoundingSphere();
+        }
+        var w = this.drawWindow(k);
+        if (p.render === 'line') geo.setDrawRange(Math.floor(w[0] * segs), Math.max(0, Math.ceil((w[1] - w[0]) * segs) + 1));
+        else { var per = obj.userData.perSeg; geo.setDrawRange(Math.floor(w[0] * segs) * per, Math.max(0, Math.ceil((w[1] - w[0]) * segs)) * per); }
+      }
+      this.built = true;
+    };
+    CurvesLayer.prototype.drawWindow = function (k) {
+      var p = this.p;
+      if (!p.drawOn) return [0, 1];
+      var e = this.e, prog = fract(e.cyc(p.drawCycles) * e.time / e.data.settings.duration + k * p.stagger * 0.05);
+      return [Math.max(0, prog * 2 - 1), Math.min(1, prog * 2)];
+    };
+    // Sweep a ring (tube) or a pair of points (ribbon) along the curve using parallel-transport frames.
+    CurvesLayer.prototype.sweep = function (geo, pts, tube) {
+      var p = this.p, segs = this.segs, pos = geo.attributes.position.array, nor = geo.attributes.normal.array;
+      var T = new THREE.Vector3(), Nn = new THREE.Vector3(), B = new THREE.Vector3(), prevT = new THREE.Vector3(), tmpV = new THREE.Vector3();
+      var r = p.thickness * (tube ? 0.5 : 1), ring = tube ? RADIAL + 1 : 2, twist = p.ribbonTwist * DEG;
+      for (var i = 0; i <= segs; i++) {
+        var a = Math.max(0, i - 1), b = Math.min(segs, i + 1);
+        T.set(pts[b * 3] - pts[a * 3], pts[b * 3 + 1] - pts[a * 3 + 1], pts[b * 3 + 2] - pts[a * 3 + 2]).normalize();
+        if (i === 0) {
+          tmpV.set(0, 1, 0); if (Math.abs(T.y) > 0.95) tmpV.set(1, 0, 0);
+          Nn.crossVectors(T, tmpV).normalize();
+        } else {
+          Nn.addScaledVector(T, -Nn.dot(T)).normalize();
+          if (Nn.lengthSq() < 1e-6) Nn.crossVectors(T, prevT).normalize();
+        }
+        prevT.copy(T);
+        B.crossVectors(T, Nn).normalize();
+        var cx = pts[i * 3], cy = pts[i * 3 + 1], cz = pts[i * 3 + 2];
+        if (tube) {
+          for (var j = 0; j < ring; j++) {
+            var ang = TAU * j / RADIAL, cs = Math.cos(ang), sn = Math.sin(ang);
+            var nx = cs * Nn.x + sn * B.x, ny = cs * Nn.y + sn * B.y, nz = cs * Nn.z + sn * B.z, vi = (i * ring + j) * 3;
+            pos[vi] = cx + nx * r; pos[vi + 1] = cy + ny * r; pos[vi + 2] = cz + nz * r;
+            nor[vi] = nx; nor[vi + 1] = ny; nor[vi + 2] = nz;
+          }
+        } else {
+          var tw = twist * i / segs, c2 = Math.cos(tw), s2 = Math.sin(tw);
+          // width direction = B rotated by twist around T, normal = N rotated
+          var wx = c2 * B.x + s2 * Nn.x, wy = c2 * B.y + s2 * Nn.y, wz = c2 * B.z + s2 * Nn.z;
+          var qx = -s2 * B.x + c2 * Nn.x, qy = -s2 * B.y + c2 * Nn.y, qz = -s2 * B.z + c2 * Nn.z;
+          var v0 = i * 6;
+          pos[v0] = cx - wx * r * 0.5; pos[v0 + 1] = cy - wy * r * 0.5; pos[v0 + 2] = cz - wz * r * 0.5;
+          pos[v0 + 3] = cx + wx * r * 0.5; pos[v0 + 4] = cy + wy * r * 0.5; pos[v0 + 5] = cz + wz * r * 0.5;
+          nor[v0] = nor[v0 + 3] = qx; nor[v0 + 1] = nor[v0 + 4] = qy; nor[v0 + 2] = nor[v0 + 5] = qz;
+        }
+      }
+      geo.attributes.position.needsUpdate = true; geo.attributes.normal.needsUpdate = true;
+    };
+
+    // ----- Globe layer -----
+    var GlobeLayer = inherit(function GlobeLayer(e, d) { Layer.call(this, e, d); });
+    function latLng(lat, lng, R, out) {
+      var u = (lng + 180) / 360, v = (lat + 90) / 180, th = (1 - v) * Math.PI, ph = u * TAU;
+      out.set(-R * Math.cos(ph) * Math.sin(th), R * Math.cos(th), R * Math.sin(ph) * Math.sin(th));
+      return out;
+    }
+    GlobeLayer.prototype.build = function () {
+      var p = this.p, e = this.e, R = p.radius, rnd = mulberry(p.seed * 31 + 5), i;
+      var tilt = this.tiltG = new THREE.Group(); this.group.add(tilt);
+      var spinG = this.spinG = new THREE.Group(); tilt.add(spinG);
+      var media = p.media ? e.getMedia(p.media) : null;
+      var useTex = media && p.mediaMode !== 'none';
+      var env = e.data.settings.envLight;
+      // core sphere
+      if (p.style === 'solid' || p.coreOpacity > 0) {
+        var solid = p.style === 'solid';
+        var coreMat = makeMaterial(p, { color: lin(solid ? (useTex ? '#ffffff' : p.colorA) : p.colorB), opacity: solid ? p.opacity : p.coreOpacity, map: solid && useTex ? media.tex : null, env: env });
+        var core = new THREE.Mesh(new THREE.SphereGeometry(R * (solid ? 1 : 0.985), 96, 64), coreMat);
+        spinG.add(core);
+      }
+      // dot matrix
+      if (p.style === 'dots') {
+        var px = media && media.ready && p.landMask ? e.sampleMedia(media, 512, 256) : null;
+        var n = Math.round(p.dotCount), keep = [], nv = new THREE.Vector3();
+        for (i = 0; i < n; i++) {
+          var fy = 1 - 2 * (i + 0.5) / n, fr = Math.sqrt(1 - fy * fy), th = i * 2.399963;
+          nv.set(Math.cos(th) * fr, fy, Math.sin(th) * fr);
+          if (px) {
+            var u = fract(Math.atan2(nv.z, -nv.x) / TAU + 1), v = 1 - Math.acos(nv.y) / Math.PI;
+            var sx = Math.min(511, Math.floor(u * 512)), sy = Math.min(255, Math.floor((1 - v) * 256)), k = (sy * 512 + sx) * 4;
+            var lum = (0.2126 * px[k] + 0.7152 * px[k + 1] + 0.0722 * px[k + 2]) / 255;
+            if ((lum > p.maskThreshold) === !!p.maskInvert) continue;
+          }
+          keep.push(nv.x, nv.y, nv.z);
+        }
+        var cnt = keep.length / 3;
+        var dotGeo = new THREE.CircleGeometry(1, 10);
+        var dotMat = makeMaterial(p, { side: THREE.DoubleSide, env: env, forceType: p.material === 'glass' ? 'standard' : null });
+        var dots = new THREE.InstancedMesh(dotGeo, dotMat, Math.max(1, cnt));
+        dots.count = cnt;
+        var o = new THREE.Object3D(), c = new THREE.Color();
+        for (i = 0; i < cnt; i++) {
+          o.position.set(keep[i * 3] * R * 1.002, keep[i * 3 + 1] * R * 1.002, keep[i * 3 + 2] * R * 1.002);
+          o.lookAt(keep[i * 3] * R * 2, keep[i * 3 + 1] * R * 2, keep[i * 3 + 2] * R * 2);
+          o.scale.setScalar(p.dotSize); o.updateMatrix(); dots.setMatrixAt(i, o.matrix);
+          var f = p.colorMode === 'position' ? 0.5 + 0.5 * keep[i * 3 + 1] : p.colorMode === 'random' ? rnd() : 0;
+          dots.setColorAt(i, colorAt(p, f, c));
+        }
+        spinG.add(dots);
+      }
+      // lat / long wireframe
+      if (p.style === 'wire') {
+        var seg = [], vA = new THREE.Vector3(), vB = new THREE.Vector3(), la, lo, steps = 96;
+        for (la = 1; la < p.latLines; la++) {
+          var lat = -90 + 180 * la / p.latLines;
+          for (i = 0; i < steps; i++) { latLng(lat, -180 + 360 * i / steps, R, vA); latLng(lat, -180 + 360 * (i + 1) / steps, R, vB); seg.push(vA.x, vA.y, vA.z, vB.x, vB.y, vB.z); }
+        }
+        for (lo = 0; lo < p.lonLines; lo++) {
+          var lng = -180 + 360 * lo / p.lonLines;
+          for (i = 0; i < steps / 2; i++) { latLng(-90 + 180 * i / (steps / 2), lng, R, vA); latLng(-90 + 180 * (i + 1) / (steps / 2), lng, R, vB); seg.push(vA.x, vA.y, vA.z, vB.x, vB.y, vB.z); }
+        }
+        var wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
+        var wm = new THREE.LineBasicMaterial({ color: lin(p.colorA).multiplyScalar(1 + p.emissive), transparent: true, opacity: p.opacity, blending: p.blend === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending });
+        spinG.add(new THREE.LineSegments(wg, wm));
+      }
+      // arcs between locations
+      this.arcs = []; this.markers = [];
+      var locs = [];
+      String(p.points || '').split(/\n|;/).forEach(function (line) {
+        var m = line.split(',').map(parseFloat);
+        if (m.length >= 2 && isFinite(m[0]) && isFinite(m[1])) locs.push([m[0], m[1]]);
+      });
+      var arcN = Math.round(p.arcCount), arcColor = lin(p.arcColor);
+      var a = new THREE.Vector3(), b = new THREE.Vector3(), pt = new THREE.Vector3();
+      var markerGeo = new THREE.RingGeometry(0.6, 1, 32);
+      for (i = 0; i < arcN; i++) {
+        var A, B;
+        if (locs.length >= 2) { A = locs[i % locs.length]; B = locs[(i + 1 + Math.floor(i / locs.length)) % locs.length]; if (A === B) continue; }
+        else { A = [Math.asin(rnd() * 2 - 1) / DEG * 0.9, rnd() * 360 - 180]; B = [Math.asin(rnd() * 2 - 1) / DEG * 0.9, rnd() * 360 - 180]; }
+        latLng(A[0], A[1], R, a); latLng(B[0], B[1], R, b);
+        var angle = a.angleTo(b), STEPS = 96, arr = new Float32Array((STEPS + 1) * 3);
+        var an = a.clone().normalize(), bn = b.clone().normalize();
+        for (var s = 0; s <= STEPS; s++) {
+          var t = s / STEPS;
+          // slerp on the unit sphere, lifted by a sine bump
+          var sinA = Math.sin(angle) || 1e-6, wa = Math.sin((1 - t) * angle) / sinA, wb = Math.sin(t * angle) / sinA;
+          pt.set(an.x * wa + bn.x * wb, an.y * wa + bn.y * wb, an.z * wa + bn.z * wb).normalize()
+            .multiplyScalar(R * (1.003 + p.arcHeight * Math.sin(Math.PI * t) * (angle / Math.PI)));
+          arr[s * 3] = pt.x; arr[s * 3 + 1] = pt.y; arr[s * 3 + 2] = pt.z;
+        }
+        var ag = new THREE.BufferGeometry(); ag.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+        var arcLine = new THREE.Line(ag, new THREE.LineBasicMaterial({ color: arcColor.clone().multiplyScalar(1.6), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+        arcLine.userData.offset = i / Math.max(1, arcN);
+        spinG.add(arcLine); this.arcs.push(arcLine);
+        if (p.arcBase > 0) {
+          var bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(arr.slice(), 3));
+          spinG.add(new THREE.Line(bg, new THREE.LineBasicMaterial({ color: arcColor, transparent: true, opacity: p.arcBase, depthWrite: false })));
+        }
+        if (p.markers) {
+          [a, b].forEach(function (v, j) {
+            var mk = new THREE.Mesh(markerGeo, new THREE.MeshBasicMaterial({ color: arcColor.clone().multiplyScalar(1.5), transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+            mk.position.copy(v).multiplyScalar(1.004); mk.lookAt(v.x * 2, v.y * 2, v.z * 2);
+            mk.userData.offset = arcLine.userData.offset + j * 0.5; mk.userData.base = R * 0.025;
+            spinG.add(mk); this.markers.push(mk);
+          }, this);
+        }
+      }
+      // atmosphere (fresnel rim)
+      if (p.atmosphere > 0) {
+        var atmo = new THREE.Mesh(new THREE.SphereGeometry(R * 1.18, 64, 48), new THREE.ShaderMaterial({
+          uniforms: { uColor: { value: lin(p.atmoColor) }, uPower: { value: p.atmosphere } },
+          vertexShader: 'varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+          fragmentShader: 'uniform vec3 uColor; uniform float uPower; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(clamp(1.0 - abs(dot(vN, vV)), 0.0, 1.0), 3.0); float rim = smoothstep(0.0, 0.35, dot(vN, vV) * -1.0 + 0.35); gl_FragColor = vec4(uColor * uPower * 1.6, f * rim * uPower); }',
+          side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
+        }));
+        tilt.add(atmo);
+      }
+    };
+    GlobeLayer.prototype.update = function () {
+      var p = this.p, e = this.e;
+      this.tiltG.rotation.z = p.tilt * DEG;
+      var base = e.cyc(p.arcCycles) * e.time / e.data.settings.duration, trail = p.arcTrail, i;
+      for (i = 0; i < this.arcs.length; i++) {
+        var arc = this.arcs[i], prog = fract(base + arc.userData.offset) * (1 + trail);
+        var start = clamp(prog - trail, 0, 1), end = clamp(prog, 0, 1);
+        arc.geometry.setDrawRange(Math.floor(start * 96), Math.max(0, Math.ceil((end - start) * 96) + 1));
+      }
+      for (i = 0; i < this.markers.length; i++) {
+        var mk = this.markers[i], ph = fract(base + mk.userData.offset);
+        mk.scale.setScalar(mk.userData.base * (0.4 + ph * 2.2));
+        mk.material.opacity = 1 - ph;
+      }
+    };
+
+    // ----- Particle field layer -----
+    var ParticlesLayer = inherit(function ParticlesLayer(e, d) { Layer.call(this, e, d); });
+    ParticlesLayer.prototype.build = function () {
+      var p = this.p, rnd = mulberry(p.seed * 7 + 1), n = clamp(Math.round(p.count), 1, 40000), S = p.spread, i;
+      var base = this.base = new Float32Array(n * 3), col = new Float32Array(n * 3), c = new THREE.Color();
+      for (i = 0; i < n; i++) {
+        var x, y, z, u = rnd(), v = rnd(), w = rnd(), th = TAU * u, r;
+        switch (p.shape) {
+          case 'shell': var cz = 2 * v - 1, sr = Math.sqrt(1 - cz * cz); x = Math.cos(th) * sr * S; y = cz * S; z = Math.sin(th) * sr * S; break;
+          case 'box': x = (u - 0.5) * 2 * S; y = (v - 0.5) * 2 * S; z = (w - 0.5) * 2 * S; break;
+          case 'disc': r = Math.sqrt(v) * S; x = Math.cos(th) * r; y = (w - 0.5) * S * 0.05; z = Math.sin(th) * r; break;
+          case 'ring': r = S * (0.75 + 0.25 * v); x = Math.cos(th) * r; y = (w - 0.5) * S * 0.08; z = Math.sin(th) * r; break;
+          case 'column': r = Math.sqrt(v) * S * 0.25; x = Math.cos(th) * r; y = (w - 0.5) * 2 * S; z = Math.sin(th) * r; break;
+          case 'galaxy':
+            r = Math.pow(v, 1.6) * S; var arm = Math.floor(u * p.arms), ga = arm / p.arms * TAU + r * 0.35 + (w - 0.5) * 0.6;
+            x = Math.cos(ga) * r; y = (rnd() - 0.5) * S * 0.06 * (1.2 - r / S); z = Math.sin(ga) * r; break;
+          default: var cz2 = 2 * v - 1, sr2 = Math.sqrt(1 - cz2 * cz2), rr = Math.cbrt(w) * S; x = Math.cos(th) * sr2 * rr; y = cz2 * rr; z = Math.sin(th) * sr2 * rr;
+        }
+        base[i * 3] = x; base[i * 3 + 1] = y; base[i * 3 + 2] = z;
+        var f = p.colorMode === 'random' ? rnd() : p.colorMode === 'radial' ? Math.sqrt(x * x + y * y + z * z) / S : p.colorMode === 'position' ? 0.5 + x / (2 * S) : 0;
+        colorAt(p, f, c); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+      }
+      var geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(base.slice(), 3).setUsage(THREE.DynamicDrawUsage));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      var media = this.media();
+      var mat = new THREE.PointsMaterial({
+        size: p.size, sizeAttenuation: true, vertexColors: true, map: media ? media.tex : getDotTexture(),
+        transparent: true, opacity: p.opacity, depthWrite: false, blending: p.blend === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending
+      });
+      if (p.emissive > 0) mat.color.setScalar(1 + p.emissive);
+      this.points = new THREE.Points(geo, mat); this.points.frustumCulled = false;
+      this.group.add(this.points);
+      this.n = n; this.flowing = null;
+    };
+    ParticlesLayer.prototype.update = function () {
+      var p = this.p, e = this.e;
+      if (p.flow <= 0) { if (this.flowing) { this.points.geometry.attributes.position.array.set(this.base); this.points.geometry.attributes.position.needsUpdate = true; this.flowing = false; } return; }
+      var th = e.ph(p.flowCycles), cx = Math.cos(th), cy = Math.sin(th), b = this.base, pos = this.points.geometry.attributes.position.array, sc = p.flowScale, A = p.flow;
+      for (var i = 0, n = this.n; i < n; i++) {
+        var i3 = i * 3, x = b[i3] * sc, y = b[i3 + 1] * sc, z = b[i3 + 2] * sc;
+        pos[i3] = b[i3] + noise3(x + cx, y + cy, z) * A;
+        pos[i3 + 1] = b[i3 + 1] + noise3(x + 17.3 + cx, y + cy, z + 5.1) * A;
+        pos[i3 + 2] = b[i3 + 2] + noise3(x + cx, y + 31.7 + cy, z + 11.9) * A;
+      }
+      this.points.geometry.attributes.position.needsUpdate = true; this.flowing = true;
+    };
+
+    // ----- Media surface layer -----
+    var MediaLayer = inherit(function MediaLayer(e, d) { Layer.call(this, e, d); });
+    MediaLayer.prototype.build = function () {
+      var p = this.p, media = p.media ? this.e.getMedia(p.media) : null, det = Math.round(p.detail);
+      var w = p.width, h = p.height;
+      if (p.autoAspect && media && media.aspect) h = w / media.aspect;
+      var geo;
+      switch (p.surface) {
+        case 'sphere': geo = new THREE.SphereGeometry(w / 2, det, Math.max(8, Math.round(det / 2))); break;
+        case 'cylinder': geo = new THREE.CylinderGeometry(w / TAU * 2, w / TAU * 2, h, det, Math.max(2, Math.round(det / 4)), true); break;
+        case 'cube': geo = new THREE.BoxGeometry(w / 2, w / 2, w / 2, 8, 8, 8); break;
+        case 'torus': geo = new THREE.TorusGeometry(w / 3, w / 8, Math.max(8, Math.round(det / 3)), det); break;
+        default:
+          geo = new THREE.PlaneGeometry(w, h, det, Math.max(2, Math.round(det * h / w)));
+          if (p.surface === 'curved' && p.curve > 0) {
+            var ang = p.curve * DEG, rad = w / ang, pa = geo.attributes.position;
+            for (var i = 0; i < pa.count; i++) { var a = pa.getX(i) / w * ang; pa.setXYZ(i, Math.sin(a) * rad, pa.getY(i), rad - Math.cos(a) * rad); }
+            geo.computeVertexNormals();
+          }
+      }
+      this.basePos = geo.attributes.position.array.slice();
+      this.baseNor = geo.attributes.normal.array.slice();
+      geo.attributes.position.setUsage(THREE.DynamicDrawUsage);
+      var mat = makeMaterial(p, { color: lin(p.colorA), map: media ? media.tex : null, side: THREE.DoubleSide, env: this.e.data.settings.envLight });
+      this.mesh = new THREE.Mesh(geo, mat);
+      this.group.add(this.mesh);
+      this.w = w; this.h = h; this.waving = false;
+    };
+    MediaLayer.prototype.update = function () {
+      var p = this.p, geo = this.mesh.geometry, pos = geo.attributes.position.array, bp = this.basePos, bn = this.baseNor;
+      if (p.waveAmp <= 0) { if (this.waving) { pos.set(bp); geo.attributes.position.needsUpdate = true; geo.computeVertexNormals(); this.waving = false; } return; }
+      var ph = this.e.ph(p.waveCycles), f = p.waveFreq, A = p.waveAmp, dir = p.waveDir;
+      for (var i = 0; i < pos.length; i += 3) {
+        var x = bp[i], y = bp[i + 1], c = dir === 'y' ? y : dir === 'diagonal' ? (x + y) * 0.7 : dir === 'radial' ? Math.sqrt(x * x + y * y) : x;
+        var d = A * Math.sin(c * f - ph);
+        pos[i] = x + bn[i] * d; pos[i + 1] = y + bn[i + 1] * d; pos[i + 2] = bp[i + 2] + bn[i + 2] * d;
+      }
+      geo.attributes.position.needsUpdate = true; geo.computeVertexNormals(); this.waving = true;
+    };
+
+    var LAYER_TYPES = { grid: GridLayer, curves: CurvesLayer, globe: GlobeLayer, particles: ParticlesLayer, media: MediaLayer };
+
+    // ---------- engine ----------
+    function Engine(container, opts) {
+      opts = opts || {};
+      this.container = container; this.opts = opts;
+      var r = this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: !!opts.preserveDrawingBuffer });
+      r.setPixelRatio(Math.min(opts.pixelRatio || window.devicePixelRatio || 1, 2));
+      r.outputEncoding = THREE.sRGBEncoding;
+      var cv = r.domElement; cv.style.width = '100%'; cv.style.height = '100%'; cv.style.display = 'block'; cv.style.touchAction = 'none';
+      container.appendChild(cv);
+      this.scene = new THREE.Scene();
+      this.camera = new THREE.PerspectiveCamera(40, 1, 0.05, 3000);
+      this.root = new THREE.Group(); this.scene.add(this.root);
+      this.ambient = new THREE.AmbientLight(0xffffff, 0.5); this.scene.add(this.ambient);
+      this.key = new THREE.DirectionalLight(0xffffff, 2); this.scene.add(this.key);
+      this.rim = new THREE.DirectionalLight(0x8899ff, 0.6); this.rim.position.set(-10, -4, -12); this.scene.add(this.rim);
+      if (THREE.RoomEnvironment) {
+        var pm = new THREE.PMREMGenerator(r);
+        this.scene.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+        pm.dispose();
+      }
+      if (THREE.EffectComposer && THREE.UnrealBloomPass) {
+        var rt = new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: 4 });
+        this.composer = new THREE.EffectComposer(r, rt);
+        this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
+        this.bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.4, 0.6);
+        this.composer.addPass(this.bloomPass);
+        // Final pass: exposure + a highlight shoulder + sRGB. Colours below 75% brightness come out exactly
+        // as picked; brighter light rolls off smoothly (keeping its hue) instead of clipping to white.
+        this.outputPass = new THREE.ShaderPass({
+          uniforms: { tDiffuse: { value: null }, exposure: { value: 1 } },
+          vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+          fragmentShader: [
+            'uniform sampler2D tDiffuse; uniform float exposure; varying vec2 vUv;',
+            'void main(){',
+            '  vec4 t = texture2D(tDiffuse, vUv);',
+            '  vec3 c = max(t.rgb * exposure, 0.0);',
+            '  float m = max(c.r, max(c.g, c.b)), k = 0.75;',
+            '  if (m > k) c *= (k + (1.0 - k) * (1.0 - exp(-(m - k) / (1.0 - k)))) / m;',
+            '  c = mix(pow(c, vec3(0.41666)) * 1.055 - 0.055, c * 12.92, vec3(lessThanEqual(c, vec3(0.0031308))));',
+            '  gl_FragColor = vec4(c, t.a);',
+            '}'
+          ].join('\n')
+        });
+        this.composer.addPass(this.outputPass);
+      }
+      if (THREE.OrbitControls) {
+        this.controls = new THREE.OrbitControls(this.camera, cv);
+        this.controls.enableDamping = true;
+        this.controls.enabled = !!opts.interactive;
+        var self = this;
+        this.controls.addEventListener('start', function () { self.userCam = true; });
+      }
+      this.layers = new Map();
+      this.media = new Map(); this.mediaKinds = {};
+      this.time = 0; this.playing = opts.autoplay !== false; this.visible = true;
+      this.onFrame = null; this.fps = 0; this._fpsAcc = 0; this._fpsN = 0;
+      this._last = performance.now();
+      this.data = normalize({});
+      var me = this;
+      if (window.ResizeObserver) { this._ro = new ResizeObserver(function () { me.resize(); }); this._ro.observe(container); }
+      this.resize();
+      this._loop = this._loop.bind(this);
+      this._raf = requestAnimationFrame(this._loop);
+    }
+    Engine.prototype.cyc = function (c) { return this.data.settings.loop ? Math.round(c) : c; };
+    Engine.prototype.ph = function (c) { return TAU * this.cyc(c) * this.time / this.data.settings.duration; };
+    Engine.prototype.resize = function () {
+      if (this._fixed) return;
+      var w = Math.max(1, this.container.clientWidth), h = Math.max(1, this.container.clientHeight);
+      this._setSize(w, h);
+    };
+    Engine.prototype._setSize = function (w, h) {
+      this.renderer.setSize(w, h, false);
+      if (this.composer) { this.composer.setPixelRatio(this.renderer.getPixelRatio()); this.composer.setSize(w, h); }
+      this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
+    };
+    Engine.prototype.load = function (scene) {
+      var me = this;
+      this.layers.forEach(function (l) { l.dispose(); }); this.layers.clear();
+      this.data = normalize(scene);
+      this.applySettings();
+      this.data.layers.forEach(function (d) { me._create(d); });
+      this.userCam = false;
+      return this.data;
+    };
+    Engine.prototype._create = function (d) {
+      var L = LAYER_TYPES[d.type]; if (!L) return null;
+      var layer = new L(this, d); this.layers.set(d.id, layer); return layer;
+    };
+    Engine.prototype.addLayer = function (d) { this.data.layers.push(d); return this._create(d); };
+    Engine.prototype.removeLayer = function (id) {
+      var l = this.layers.get(id); if (l) l.dispose(); this.layers.delete(id);
+      this.data.layers = this.data.layers.filter(function (x) { return x.id !== id; });
+    };
+    Engine.prototype.rebuildLayer = function (id) { var l = this.layers.get(id); if (l) l.rebuild(); };
+    Engine.prototype.setParam = function (id, key, value) {
+      var l = this.layers.get(id); if (!l) return;
+      l.p[key] = value;
+      var f = FIELD_INDEX[l.d.type][key] || {};
+      if (f.r || f.m) l.rebuild(); else if (f.c) l.recolor();
+      l.built = false; // static curves re-sweep on the next frame
+    };
+    Engine.prototype.setSetting = function (key, value) {
+      this.data.settings[key] = value;
+      if (key === 'camMode') this.userCam = false;
+      if (key === 'envLight') this.layers.forEach(function (l) { l.rebuild(); });
+      this.applySettings();
+    };
+    Engine.prototype.applySettings = function () {
+      var s = this.data.settings, sc = this.scene;
+      if (sc.background && sc.background.isTexture) sc.background.dispose();
+      if (s.bgType === 'transparent') sc.background = null;
+      else if (s.bgType === 'solid') sc.background = lin(s.bg1);
+      else {
+        var c = document.createElement('canvas'); c.width = c.height = 512;
+        var g = c.getContext('2d'), gr = s.bgType === 'linear' ? g.createLinearGradient(0, 0, 0, 512) : g.createRadialGradient(256, 230, 10, 256, 256, 380);
+        gr.addColorStop(0, s.bg1); gr.addColorStop(1, s.bg2); g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
+        var t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; sc.background = t;
+      }
+      sc.fog = s.fog > 0 ? new THREE.FogExp2(lin(s.bgType === 'radial' || s.bgType === 'linear' ? s.bg2 : s.bg1), s.fog * 0.08) : null;
+      this.ambient.intensity = s.ambient;
+      this.key.intensity = s.keyIntensity; this.key.color.copy(lin(s.keyColor));
+      this.key.position.set(Math.cos(s.keyAngle * DEG) * 12, 14, Math.sin(s.keyAngle * DEG) * 12);
+      if (this.outputPass) this.outputPass.uniforms.exposure.value = s.exposure;
+      if (this.bloomPass) { this.bloomPass.strength = s.bloom; this.bloomPass.radius = s.bloomRadius; this.bloomPass.threshold = s.bloomThreshold; this.bloomPass.enabled = s.bloom > 0; }
+      this.camera.fov = s.fov; this.camera.updateProjectionMatrix();
+      if (this.controls) {
+        this.controls.enabled = !!(this.opts.interactive || (s.interactive && !this.opts.editor));
+        if (s.camMode === 'free' && !this._freeInit) { this.camera.position.set(0, s.camHeight, s.camDistance); this.controls.target.set(0, s.targetY, 0); this._freeInit = true; }
+        if (s.camMode !== 'free') this._freeInit = false;
+      }
+    };
+    Engine.prototype.updateCamera = function () {
+      var s = this.data.settings, cam = this.camera;
+      if (s.camMode === 'free' || this.userCam) { if (this.controls) this.controls.update(); return; }
+      var ph = this.ph(s.camCycles), D = s.camDistance, H = s.camHeight, A = s.camAmount;
+      var px = 0, py = H, pz = D, tx = 0, ty = s.targetY, tz = 0;
+      cam.up.set(0, 1, 0);
+      switch (s.camMode) {
+        case 'orbit': px = Math.sin(ph) * D; pz = Math.cos(ph) * D; break;
+        case 'pendulum': var pa = Math.sin(ph) * A * Math.PI * 0.5; px = Math.sin(pa) * D; pz = Math.cos(pa) * D; break;
+        case 'dolly': var dd = D * (1 - 0.75 * A * (0.5 - 0.5 * Math.cos(ph))); pz = dd; py = H * dd / D; break;
+        case 'pan': px = Math.sin(ph) * D * A * 0.6; tx = px; break;
+        case 'crane': py = H + Math.sin(ph) * D * A * 0.7; pz = D * (1 - 0.2 * A * Math.sin(ph)); break;
+        case 'flythrough':
+          var fr = D * Math.max(0.08, 1 - A * 0.9); px = Math.sin(ph) * fr; pz = Math.cos(ph) * fr; py = H * (1 - A) + Math.sin(ph * 2) * A * 0.6;
+          tx = Math.sin(ph + 0.35) * fr; tz = Math.cos(ph + 0.35) * fr; ty = py - 0.25; break;
+        case 'topdown': px = 0.0001; py = D; pz = 0; cam.up.set(Math.sin(ph), 0, Math.cos(ph)); break;
+      }
+      if (s.camShake > 0) {
+        var st = TAU * this.time / s.duration, k = s.camShake * D * 0.025, c1 = Math.cos(st * 3), s1 = Math.sin(st * 3);
+        px += noise3(c1, s1, 0.5) * k; py += noise3(c1, s1, 7.5) * k; pz += noise3(c1, s1, 13.5) * k * 0.5;
+      }
+      cam.position.set(px, py, pz); cam.lookAt(tx, ty, tz);
+      if (this.controls) this.controls.target.set(tx, ty, tz);
+    };
+    Engine.prototype.renderFrame = function () {
+      this.layers.forEach(function (l) {
+        l.group.visible = l.d.visible !== false;
+        if (l.group.visible) l.tick();
+      });
+      this.updateCamera();
+      var transparent = this.data.settings.bgType === 'transparent';
+      if (this.composer && !transparent) this.composer.render(); else this.renderer.render(this.scene, this.camera);
+    };
+    Engine.prototype._loop = function (now) {
+      this._raf = requestAnimationFrame(this._loop);
+      var dt = Math.min(0.1, (now - this._last) / 1000); this._last = now;
+      if (this._exporting || !this.visible) return;
+      var s = this.data.settings;
+      if (this.playing) { this.time += dt * s.speed; if (s.loop) this.time %= s.duration; }
+      this.renderFrame();
+      this._fpsAcc += dt; this._fpsN++;
+      if (this._fpsAcc > 0.5) { this.fps = Math.round(this._fpsN / this._fpsAcc); this._fpsAcc = 0; this._fpsN = 0; }
+      if (this.onFrame) this.onFrame(this.time);
+    };
+    Engine.prototype.play = function () { this.playing = true; };
+    Engine.prototype.pause = function () { this.playing = false; };
+    Engine.prototype.setTime = function (t) { this.time = t; };
+    Engine.prototype.setVisible = function (v) { this.visible = v; };
+
+    // media cache: images, videos, built-in procedural textures
+    Engine.prototype.registerMedia = function (url, kind) { this.mediaKinds[url] = kind; };
+    Engine.prototype.getMedia = function (url) {
+      if (this.media.has(url)) return this.media.get(url);
+      var me = this, entry = { url: url, kind: 'image', ready: false, tex: null, el: null, aspect: 0, samples: {} };
+      var done = function () {
+        entry.ready = true;
+        me.layers.forEach(function (l) { if (l.p.media === url) l.rebuild(); });
+      };
+      if (/^builtin:/.test(url)) {
+        var cv = builtinTexture(url); entry.el = cv; entry.tex = new THREE.CanvasTexture(cv); entry.aspect = cv.width / cv.height; entry.ready = true;
+      } else if (isVideoUrl(url, this.mediaKinds)) {
+        var v = document.createElement('video');
+        v.crossOrigin = 'anonymous'; v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.setAttribute('playsinline', '');
+        v.src = url; entry.kind = 'video'; entry.el = v; entry.tex = new THREE.VideoTexture(v);
+        v.addEventListener('loadeddata', function () { entry.aspect = v.videoWidth / v.videoHeight; done(); }, { once: true });
+        var pr = v.play(); if (pr && pr.catch) pr.catch(function () {});
+      } else {
+        var img = new Image(); img.crossOrigin = 'anonymous';
+        entry.el = img; entry.tex = new THREE.Texture(img);
+        img.onload = function () { entry.tex.needsUpdate = true; entry.aspect = img.naturalWidth / img.naturalHeight; done(); };
+        img.src = url;
+      }
+      entry.tex.encoding = THREE.sRGBEncoding;
+      entry.tex.anisotropy = 4;
+      this.media.set(url, entry);
+      return entry;
+    };
+    Engine.prototype.sampleMedia = function (entry, w, h) {
+      if (!entry || !entry.ready) return null;
+      var key = w + 'x' + h, cached = entry.samples[key];
+      if (cached && entry.kind !== 'video') return cached;
+      var c = this._sampleCanvas || (this._sampleCanvas = document.createElement('canvas'));
+      c.width = w; c.height = h;
+      var g = c.getContext('2d', { willReadFrequently: true });
+      try { g.drawImage(entry.el, 0, 0, w, h); entry.samples[key] = g.getImageData(0, 0, w, h).data; }
+      catch (err) { entry.samples[key] = null; }
+      return entry.samples[key];
+    };
+
+    // Render one still at an exact pixel size.
+    Engine.prototype.snapshot = function (w, h) {
+      var me = this, pr = this.renderer.getPixelRatio();
+      this._exporting = true; this._fixed = true;
+      this.renderer.setPixelRatio(1); this._setSize(w, h);
+      this.renderFrame();
+      return new Promise(function (res) {
+        me.renderer.domElement.toBlob(function (b) {
+          me.renderer.setPixelRatio(pr); me._fixed = false; me.resize(); me._exporting = false; res(b);
+        }, 'image/png');
+      });
+    };
+    // Frame-accurate offline render: calls onFrame(canvas, index, total) after each frame is drawn.
+    Engine.prototype.renderSequence = function (w, h, fps, onFrame) {
+      var me = this, s = this.data.settings, total = Math.max(1, Math.round(s.duration / s.speed * fps)), pr = this.renderer.getPixelRatio(), t0 = this.time;
+      var videos = []; this.media.forEach(function (m) { if (m.kind === 'video' && m.ready) videos.push(m.el); });
+      this._exporting = true; this._fixed = true;
+      this.renderer.setPixelRatio(1); this._setSize(w, h);
+      videos.forEach(function (v) { v.pause(); });
+      var i = 0;
+      function finish() { me.renderer.setPixelRatio(pr); me._fixed = false; me.resize(); me.time = t0; me._exporting = false; videos.forEach(function (v) { var q = v.play(); if (q && q.catch) q.catch(function () {}); }); }
+      function seek(v, t) { return new Promise(function (res) { if (!v.duration) return res(); v.addEventListener('seeked', function () { res(); }, { once: true }); v.currentTime = t % v.duration; }); }
+      function step() {
+        if (i >= total) { finish(); return Promise.resolve(total); }
+        me.time = i / fps * s.speed;
+        var vt = i / fps;
+        return Promise.all(videos.map(function (v) { return seek(v, vt); })).then(function () {
+          me.renderFrame();
+          return onFrame(me.renderer.domElement, i, total);
+        }).then(function () { i++; return step(); });
+      }
+      return step().catch(function (err) { finish(); throw err; });
+    };
+    Engine.prototype.dispose = function () {
+      cancelAnimationFrame(this._raf);
+      if (this._ro) this._ro.disconnect();
+      this.layers.forEach(function (l) { l.dispose(); });
+      if (this.controls) this.controls.dispose();
+      this.media.forEach(function (m) { if (m.tex) m.tex.dispose(); if (m.kind === 'video') { m.el.pause(); m.el.removeAttribute('src'); } });
+      this.renderer.dispose();
+      if (this.renderer.domElement.parentNode) this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
+    };
+
+    // ---------- presets ----------
+    function L(type, name, params) { var l = newLayer(type, params); l.name = name; return l; }
+    var PRESETS = {
+      'dot-globe': function () { return { settings: { camMode: 'pendulum', camDistance: 17, camHeight: 3, camAmount: 0.35, bloom: 0.8, bloomThreshold: 0.2, bg1: '#0d1838', bg2: '#020309', duration: 12 },
+        layers: [L('globe', 'Dot globe', { style: 'dots', dotCount: 12000, colorA: '#8fd0ff', colorB: '#06122a', material: 'glow', emissive: 0.3, arcCount: 22, spin: 1 }),
+                 L('particles', 'Stars', { shape: 'shell', spread: 40, count: 2500, size: 0.12, colorA: '#ffffff', colorB: '#88aaff', flow: 0 })] }; },
+      'wave-field': function () { return { settings: { camMode: 'orbit', camDistance: 24, camHeight: 13, bloom: 0.45, bg1: '#171034', bg2: '#05030c', duration: 10 },
+        layers: [L('grid', 'Wave field', { countX: 70, countY: 70, spacing: 0.32, shape: 'sphere', elementSize: 0.12, waveType: 'radial', waveAmp: 1.1, waveFreq: 0.9, colorMode: 'wave', colorA: '#3a7bff', colorB: '#ff5fd2', material: 'glow', emissive: 0.4, noiseAmp: 0.3 })] }; },
+      'silk-ribbons': function () { return { settings: { camMode: 'pendulum', camDistance: 15, camHeight: 3, camAmount: 0.35, bloom: 0.2, bloomThreshold: 0.75, bg1: '#2a2140', bg2: '#08070d', bgType: 'linear', ambient: 0.6, keyIntensity: 2.4, keyAngle: 70 },
+        layers: [L('curves', 'Silk', { curveType: 'wave', count: 36, render: 'ribbon', thickness: 0.35, radius: 7, height: 1.4, turns: 1.25, spread: 0.2, morphAmp: 0.7, morphFreq: 0.8, stagger: 0.12, ribbonTwist: 90, material: 'standard', metalness: 0.35, roughness: 0.3, colorA: '#ff8a5b', colorB: '#7b5cff', colorMode: 'index', rotX: -18 })] }; },
+      'hex-pulse': function () { return { settings: { camMode: 'orbit', camDistance: 24, camHeight: 10, bloom: 0.15, bloomThreshold: 0.85, bg1: '#0b1a1f', bg2: '#020607', targetY: 1 },
+        layers: [L('grid', 'Hex bars', { distribution: 'hex', countX: 30, countY: 34, spacing: 0.5, shape: 'cylinder', elementSize: 0.4, stretch: 5, waveAffect: 'height', waveType: 'radial', waveAmp: 0.9, waveFreq: 0.7, colorMode: 'wave', colorA: '#00b894', colorB: '#ffd34d', material: 'standard', roughness: 0.35, emissive: 0 })] }; },
+      'pixel-sphere': function () { return { settings: { camMode: 'orbit', camDistance: 20, camHeight: 4, bloom: 0.5, bloomThreshold: 0.55, bg1: '#140b22', bg2: '#000000' },
+        layers: [L('grid', 'Pixel sphere', { distribution: 'sphere', countX: 60, countY: 60, size: 6, shape: 'cube', elementSize: 0.16, stretch: 1, waveAffect: 'height', waveType: 'linear', waveAmp: 0, noiseAmp: 1.4, noiseScale: 0.35, colorMode: 'noise', colorA: '#ff2e88', colorB: '#29d9ff', material: 'standard', roughness: 0.4, emissive: 0 })] }; },
+      'equalizer': function () { return { settings: { camMode: 'crane', camDistance: 20, camHeight: 7, camAmount: 0.3, bloom: 0.2, bloomThreshold: 0.8, bg1: '#1a1a1f', bg2: '#000000', bgType: 'radial', targetY: 1 },
+        layers: [L('grid', 'Bars', { countX: 40, countY: 8, spacing: 0.46, shape: 'cube', elementSize: 0.36, stretch: 4, waveAffect: 'height', waveType: 'linear', waveAmp: 0.7, waveFreq: 0.6, waveCycles: 2, noiseAmp: 0.35, noiseScale: 0.4, noiseCycles: 2, colorMode: 'wave', colorA: '#ff3d6e', colorB: '#ffb020', material: 'standard', roughness: 0.3, metalness: 0.2 })] }; },
+      'video-wall': function () { return { settings: { camMode: 'pendulum', camDistance: 18, camHeight: 1, camAmount: 0.45, bloom: 0.25, bg1: '#1b1b22', bg2: '#050507' },
+        layers: [L('grid', 'Mosaic wall', { distribution: 'square', orientation: 'wall', countX: 16, countY: 9, spacing: 0.72, shape: 'cube', elementSize: 0.68, stretch: 1, waveAffect: 'position', waveType: 'diagonal', waveAmp: 0.8, waveFreq: 0.6, rotWave: 25, colorMode: 'solid', colorA: '#ffffff', media: 'builtin:testcard', mediaMode: 'mosaic', roughness: 0.5 })] }; },
+      'torus-knot': function () { return { settings: { camMode: 'orbit', camDistance: 16, camHeight: 5, bloom: 0.15, bloomThreshold: 0.85, bg1: '#2a2f3a', bg2: '#0a0c10', envLight: 0.9, keyIntensity: 1.6 },
+        layers: [L('curves', 'Knot', { curveType: 'knot', p: 3, q: 7, radius: 6, count: 5, arrange: 'nested', spread: 0.3, render: 'tube', thickness: 0.18, segments: 500, morphAmp: 0, flowCycles: 1, stagger: 0.2, material: 'metal', roughness: 0.3, colorA: '#e0a43a', colorB: '#6f8cff', colorMode: 'index' }),
+                 L('particles', 'Dust', { count: 3000, spread: 14, size: 0.05, colorA: '#ffe7b0', colorB: '#ffffff', flow: 0.8 })] }; },
+      'galaxy': function () { return { settings: { camMode: 'orbit', camDistance: 26, camHeight: 12, bloom: 1.2, bloomThreshold: 0.05, bloomRadius: 0.6, bg1: '#0a0618', bg2: '#000000', camCycles: 1 },
+        layers: [L('particles', 'Galaxy', { shape: 'galaxy', count: 30000, spread: 14, arms: 4, size: 0.07, colorMode: 'radial', colorA: '#fff1c9', colorB: '#6a4cff', flow: 0.25, spin: 1 })] }; },
+      'op-art': function () { return { settings: { camMode: 'topdown', camDistance: 20, bloom: 0, bgType: 'solid', bg1: '#f2f2f2', ambient: 1.4, keyIntensity: 1 },
+        layers: [L('grid', 'Op-art rings', { distribution: 'radial', countX: 120, countY: 28, spacing: 0.3, shape: 'sphere', elementSize: 0.2, waveAffect: 'scale', waveType: 'radial', waveAmp: 0.9, waveFreq: 1.6, waveCycles: 2, twist: 120, twistCycles: 1, colorMode: 'solid', colorA: '#111111', material: 'matte' })] }; },
+      'lissajous': function () { return { settings: { camMode: 'orbit', camDistance: 15, camHeight: 3, bloom: 1, bloomThreshold: 0.1, bg1: '#06121a', bg2: '#000000' },
+        layers: [L('curves', 'Lissajous', { curveType: 'lissajous', p: 3, q: 4, radius: 5, count: 18, arrange: 'nested', spread: 0.12, render: 'line', morphAmp: 0, flowCycles: 1, stagger: 0.06, blend: 'additive', colorA: '#3cf2ff', colorB: '#ff3cac', colorMode: 'index', drawOn: true })] }; },
+      'dna-helix': function () { return { settings: { camMode: 'crane', camDistance: 16, camHeight: 0, camAmount: 0.35, bloom: 0.5, bloomThreshold: 0.4, bg1: '#0c1230', bg2: '#020310' },
+        layers: [L('curves', 'Strands', { curveType: 'helix', radius: 1.8, height: 16, turns: 4, count: 2, arrange: 'radial', render: 'dots', thickness: 0.22, segments: 160, morphAmp: 0, flowCycles: 1, stagger: 0, colorA: '#62d5ff', colorB: '#ff6bd6', colorMode: 'index', material: 'standard', roughness: 0.3, rotZ: 20 }),
+                 L('particles', 'Plasma', { shape: 'column', count: 5000, spread: 9, size: 0.05, colorA: '#62d5ff', colorB: '#ffffff', flow: 0.5, rotZ: 20 })] }; }
+    };
+    var PRESET_NAMES = { 'dot-globe': 'Dot globe', 'wave-field': 'Wave field', 'silk-ribbons': 'Silk ribbons', 'hex-pulse': 'Hex pulse', 'pixel-sphere': 'Pixel sphere', 'equalizer': 'Equalizer bars', 'video-wall': 'Video wall (mosaic)', 'torus-knot': 'Torus knot', 'galaxy': 'Galaxy', 'op-art': 'Op-art rings', 'lissajous': 'Lissajous glow', 'dna-helix': 'DNA fly-through' };
+    function preset(name) { var f = PRESETS[name] || PRESETS['wave-field']; return normalize(f()); }
+
+    return {
+      version: '1.0.0', Engine: Engine, SCHEMA: SCHEMA, SETTINGS_SCHEMA: SETTINGS_SCHEMA, FIELD_INDEX: FIELD_INDEX, SETTINGS_INDEX: SETTINGS_INDEX,
+      LAYER_NAMES: LAYER_NAMES, newLayer: newLayer, normalize: normalize, preset: preset, PRESET_NAMES: PRESET_NAMES, uid: uid
+    };
+  }
+
+  // Builds a single self-contained HTML file that plays a scene.
+  function standaloneHTML(scene, title) {
+    var json = JSON.stringify(scene).replace(/<\//g, '<\\/');
+    var esc = String(title || 'Lattice scene').replace(/[<>&"]/g, '');
+    return '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">\n<title>' + esc + '</title>\n' +
+      '<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#stage{position:fixed;inset:0}</style>\n' +
+      LATTICE_DEPS.map(function (s) { return '<script src="' + s + '"><\/script>'; }).join('\n') + '\n' +
+      '<script>window.Lattice=(' + LatticeFactory.toString() + ')(THREE);<\/script>\n' +
+      '</head><body><div id="stage"></div>\n<script>\nvar scene=' + json + ';\n' +
+      'var reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;\n' +
+      'var engine=new Lattice.Engine(document.getElementById("stage"),{autoplay:!reduce});engine.load(scene);if(reduce)engine.setTime(scene.settings.duration*0.25);\n' +
+      '<\/script></body></html>\n';
+  }
+
+  root.LATTICE_DEPS = LATTICE_DEPS;
+  root.LatticeFactory = LatticeFactory;
+  root.LatticeInit = function () {
+    if (!root.Lattice && root.THREE) { root.Lattice = LatticeFactory(root.THREE); root.Lattice.standaloneHTML = standaloneHTML; root.Lattice.DEPS = LATTICE_DEPS; }
+    return root.Lattice;
+  };
+  root.LatticeInit();
+})(window);
+
+</script>
+</head>
+<body>
+  <header id="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 21 7v10l-9 5-9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/></g></svg>
+      <b>Lattice</b><span>Studio</span>
+    </div>
+    <select id="presetSel" title="Start from a preset"></select>
+    <div class="btn-group">
+      <button id="btnNew" title="New empty scene">New</button>
+      <button id="btnOpen" title="Open a scene .json">Open</button>
+      <button id="btnSave" title="Download scene .json">Save</button>
+    </div>
+    <div class="btn-group">
+      <button id="btnUndo" title="Undo (Ctrl+Z)">Undo</button>
+      <button id="btnRedo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+    </div>
+    <button id="btnRandom" title="Randomise the selected layer (R)">Randomize</button>
+    <button id="btnCam" title="Return to the animated camera after dragging">Reset camera</button>
+    <span class="grow"></span>
+    <button id="btnPng">Image</button>
+    <button id="btnVideo" class="primary">Export video</button>
+    <button id="btnEmbed" class="accent">Embed / HTML</button>
+  </header>
+
+  <aside id="left">
+    <div class="panel-title">Layers</div>
+    <div id="layerList"></div>
+    <div class="panel-title small">Add layer</div>
+    <div class="add-grid">
+      <button data-add="grid">Grid / pattern</button>
+      <button data-add="curves">Curves</button>
+      <button data-add="globe">Globe</button>
+      <button data-add="particles">Particles</button>
+      <button data-add="media">Image / video</button>
+    </div>
+    <div class="layer-actions">
+      <button id="btnDup" title="Duplicate layer">Duplicate</button>
+      <button id="btnUp" title="Move up">&uarr;</button>
+      <button id="btnDown" title="Move down">&darr;</button>
+      <button id="btnDel" class="danger" title="Delete layer">Delete</button>
+    </div>
+    <p class="hint">Drag in the viewport to look around. Double-click a slider label to reset it. Space plays or pauses.</p>
+  </aside>
+
+  <main id="stage">
+    <div id="frame"></div>
+    <div id="hud"></div>
+  </main>
+
+  <aside id="right"><div id="props"></div></aside>
+
+  <footer id="timeline">
+    <button id="btnPlay" class="icon" title="Play / pause (Space)">Pause</button>
+    <span id="timeLabel">0.00 s</span>
+    <input id="scrub" type="range" min="0" max="8" step="0.01" value="0" aria-label="Timeline">
+    <label class="inline">Aspect
+      <select id="aspectSel">
+        <option value="16:9">16:9</option><option value="9:16">9:16</option><option value="1:1">1:1</option>
+        <option value="4:5">4:5</option><option value="21:9">21:9</option><option value="free">Fill</option>
+      </select>
+    </label>
+    <span id="fpsLabel">-- fps</span>
+  </footer>
+
+  <div id="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head"><h2 id="modalTitle"></h2><button id="modalClose" class="icon" aria-label="Close">&times;</button></div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+  <div id="toast" role="status"></div>
+  <input type="file" id="fileOpen" accept=".json,application/json" hidden>
+  <input type="file" id="fileMedia" accept="image/*,video/*" hidden>
+  <script>
+/* Lattice Studio — editor UI. Builds every panel from the engine's parameter schema. */
+(function () {
+  'use strict';
+  var Lx = window.Lattice;
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  if (!Lx) {
+    document.body.innerHTML = '<p style="padding:24px">Could not load three.js from the CDN. Check your internet connection and reload.</p>';
+    return;
+  }
+
+  // ---------- helpers ----------
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === 'class') n.className = attrs[k];
+      else if (k === 'text') n.textContent = attrs[k];
+      else if (k.slice(0, 2) === 'on') n.addEventListener(k.slice(2), attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    });
+    (kids || []).forEach(function (c) { if (c != null) n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function toast(msg, ms) {
+    var t = $('#toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, ms || 2600);
+  }
+  function download(blob, name) {
+    var a = el('a', { href: URL.createObjectURL(blob), download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  }
+  function optLabel(o) { return Array.isArray(o) ? o[1] : o.charAt(0).toUpperCase() + o.slice(1); }
+  function optValue(o) { return Array.isArray(o) ? o[0] : o; }
+  function slug(s) { return String(s || 'scene').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'scene'; }
+  function store(key, val) { try { if (val === undefined) return localStorage.getItem(key); localStorage.setItem(key, val); } catch (e) { return null; } }
+
+  // ---------- engine + state ----------
+  var frame = $('#frame'), stage = $('#stage');
+  var engine = new Lx.Engine(frame, { interactive: true, editor: true });
+  var scene, selected = 'scene', openGroups = {};
+  var saved = store('lattice.autosave');
+  try { scene = engine.load(saved ? JSON.parse(saved) : Lx.preset('wave-field')); }
+  catch (e) { scene = engine.load(Lx.preset('wave-field')); }
+
+  // ---------- history ----------
+  var past = [], future = [], snap = JSON.stringify(scene), commitTimer = null;
+  function commit() {
+    clearTimeout(commitTimer); commitTimer = null;
+    var s = JSON.stringify(scene);
+    if (s === snap) return;
+    past.push(snap); if (past.length > 40) past.shift();
+    future.length = 0; snap = s;
+    store('lattice.autosave', s);
+    updateUndo();
+  }
+  function commitSoon() { clearTimeout(commitTimer); commitTimer = setTimeout(commit, 350); }
+  function restore(json) {
+    scene = engine.load(JSON.parse(json));
+    if (selected !== 'scene' && !findLayer(selected)) selected = 'scene';
+    store('lattice.autosave', json);
+    renderAll();
+  }
+  function undo() { if (commitTimer) commit(); if (!past.length) return; future.push(snap); snap = past.pop(); restore(snap); updateUndo(); }
+  function redo() { if (!future.length) return; past.push(snap); snap = future.pop(); restore(snap); updateUndo(); }
+  function updateUndo() { $('#btnUndo').disabled = !past.length; $('#btnRedo').disabled = !future.length; }
+  function loadScene(data) { if (commitTimer) commit(); scene = engine.load(data); selected = scene.layers[0] ? scene.layers[0].id : 'scene'; renderAll(); commit(); }
+
+  function findLayer(id) { return scene.layers.filter(function (l) { return l.id === id; })[0]; }
+
+  // ---------- viewport framing ----------
+  function aspectValue() {
+    var a = scene.settings.aspect || '16:9';
+    if (a === 'free') return null;
+    var p = a.split(':'); return parseFloat(p[0]) / parseFloat(p[1]);
+  }
+  function layoutFrame() {
+    var pad = 28, W = stage.clientWidth - pad * 2, H = stage.clientHeight - pad * 2, a = aspectValue();
+    if (!a) { frame.style.width = (W + pad * 2) + 'px'; frame.style.height = (H + pad * 2) + 'px'; return; }
+    var w = W, h = W / a; if (h > H) { h = H; w = H * a; }
+    frame.style.width = Math.floor(w) + 'px'; frame.style.height = Math.floor(h) + 'px';
+  }
+  if (window.ResizeObserver) new ResizeObserver(layoutFrame).observe(stage); else window.addEventListener('resize', layoutFrame);
+
+  // ---------- layers panel ----------
+  function renderLayers() {
+    var list = $('#layerList'); list.innerHTML = '';
+    list.appendChild(el('div', { class: 'layer scene' + (selected === 'scene' ? ' sel' : ''), onclick: function () { select('scene'); } }, [
+      el('span', { class: 'name', text: 'Scene, camera & light' })
+    ]));
+    scene.layers.forEach(function (l) {
+      var row = el('div', { class: 'layer' + (selected === l.id ? ' sel' : '') + (l.visible ? '' : ' hidden'), onclick: function () { select(l.id); } }, [
+        el('button', { class: 'eye', title: l.visible ? 'Hide' : 'Show', text: l.visible ? '◉' : '○', onclick: function (ev) {
+          ev.stopPropagation(); l.visible = !l.visible; renderLayers(); commit();
+        } }),
+        el('span', { class: 'name', text: l.name }),
+        el('span', { class: 'type', text: Lx.LAYER_NAMES[l.type] })
+      ]);
+      list.appendChild(row);
+    });
+    var isLayer = selected !== 'scene';
+    ['#btnDup', '#btnUp', '#btnDown', '#btnDel'].forEach(function (s) { $(s).disabled = !isLayer; });
+  }
+  function select(id) { selected = id; renderLayers(); renderProps(); }
+
+  // ---------- properties panel ----------
+  function renderProps() {
+    var props = $('#props'); props.innerHTML = '';
+    var layer = selected === 'scene' ? null : findLayer(selected);
+    var groups = layer ? Lx.SCHEMA[layer.type] : Lx.SETTINGS_SCHEMA;
+    var obj = layer ? layer.params : scene.settings;
+    var set = layer ? function (k, v) { engine.setParam(layer.id, k, v); } : function (k, v) { engine.setSetting(k, v); onSetting(k); };
+
+    var head = el('div', { class: 'props-head' });
+    if (layer) {
+      head.appendChild(el('input', { type: 'text', value: layer.name, 'aria-label': 'Layer name', oninput: function (e) { layer.name = e.target.value; renderLayers(); commitSoon(); } }));
+      head.appendChild(el('span', { class: 'tag', text: Lx.LAYER_NAMES[layer.type] }));
+    } else head.appendChild(el('b', { text: 'Scene settings' }));
+    props.appendChild(head);
+
+    groups.forEach(function (g, gi) {
+      var key = (layer ? layer.type : 'scene') + ':' + g.name;
+      var isOpen = openGroups[key] !== undefined ? openGroups[key] : gi < 3;
+      var det = el('details', { class: 'group' });
+      det.open = isOpen;
+      det.addEventListener('toggle', function () { openGroups[key] = det.open; });
+      det.appendChild(el('summary', { text: g.name }));
+      var box = el('div', { class: 'fields' });
+      g.fields.forEach(function (f) { box.appendChild(fieldRow(f, obj, set)); });
+      det.appendChild(box);
+      props.appendChild(det);
+    });
+  }
+
+  function fieldRow(f, obj, set) {
+    var label = el('label', { text: f.label, title: 'Double-click to reset' });
+    label.addEventListener('dblclick', function () { obj[f.key] = f.def; set(f.key, f.def); renderProps(); commit(); });
+    var v = obj[f.key];
+    switch (f.type) {
+      case 'range': {
+        var range = el('input', { type: 'range', min: f.min, max: f.max, step: f.step, value: v, 'aria-label': f.label });
+        var num = el('input', { type: 'number', min: f.min, max: f.max, step: f.step, value: v, 'aria-label': f.label + ' value' });
+        var apply = function (val, src) {
+          val = parseFloat(val); if (!isFinite(val)) return;
+          obj[f.key] = val; set(f.key, val);
+          if (src !== range) range.value = val;
+          if (src !== num) num.value = val;
+          commitSoon();
+        };
+        range.addEventListener('input', function () { apply(range.value, range); });
+        num.addEventListener('change', function () { apply(num.value, num); });
+        return el('div', { class: 'field' }, [label, range, num]);
+      }
+      case 'color': {
+        var c = el('input', { type: 'color', value: v, 'aria-label': f.label });
+        c.addEventListener('input', function () { obj[f.key] = c.value; set(f.key, c.value); commitSoon(); });
+        return el('div', { class: 'field wide' }, [label, c]);
+      }
+      case 'select': {
+        var s = el('select', { 'aria-label': f.label });
+        f.options.forEach(function (o) { var opt = el('option', { value: optValue(o), text: optLabel(o) }); if (optValue(o) === v) opt.selected = true; s.appendChild(opt); });
+        s.addEventListener('change', function () { obj[f.key] = s.value; set(f.key, s.value); commit(); if (f.key === 'camMode') renderProps(); });
+        return el('div', { class: 'field wide' }, [label, s]);
+      }
+      case 'bool': {
+        var b = el('input', { type: 'checkbox', class: 'switch', 'aria-label': f.label });
+        b.checked = !!v;
+        b.addEventListener('change', function () { obj[f.key] = b.checked; set(f.key, b.checked); commit(); });
+        return el('div', { class: 'field wide' }, [label, b]);
+      }
+      case 'text': {
+        var ta = el('textarea', { placeholder: '51.5, -0.12\n40.7, -74.0\n35.7, 139.7', 'aria-label': f.label });
+        ta.value = v || '';
+        ta.addEventListener('change', function () { obj[f.key] = ta.value; set(f.key, ta.value); commit(); });
+        return el('div', { class: 'field block' }, [label, ta]);
+      }
+      case 'media': return mediaField(f, obj, set, label);
+    }
+    return el('div');
+  }
+
+  function mediaField(f, obj, set, label) {
+    var v = obj[f.key] || '';
+    var thumb = el('div', { class: 'media-thumb' });
+    if (!v) thumb.textContent = 'No media';
+    else if (/^builtin:/.test(v)) thumb.textContent = v.replace('builtin:', 'Built-in: ');
+    else if (/^data:video|\.(mp4|webm|mov|m4v)/i.test(v) || engine.mediaKinds[v] === 'video') { var vid = el('video', { src: v, muted: '', autoplay: '', loop: '', playsinline: '' }); vid.muted = true; thumb.appendChild(vid); }
+    else thumb.style.backgroundImage = 'url("' + v.replace(/"/g, '%22') + '")';
+    var apply = function (val) { obj[f.key] = val; set(f.key, val); commit(); renderProps(); };
+    var builtin = el('select', { 'aria-label': 'Built-in textures' }, [
+      el('option', { value: '', text: 'Built-in…' }), el('option', { value: 'builtin:testcard', text: 'Test card' }), el('option', { value: 'builtin:stripes', text: 'Stripes' })
+    ]);
+    builtin.addEventListener('change', function () { if (builtin.value) apply(builtin.value); });
+    var url = el('input', { type: 'text', placeholder: 'or paste an image / video URL', value: /^(https?:)?\/\//.test(v) ? v : '' });
+    url.addEventListener('change', function () { apply(url.value.trim()); });
+    return el('div', { class: 'field block' }, [label, el('div', { class: 'media-box' }, [
+      thumb,
+      el('div', { class: 'media-row' }, [
+        el('button', { text: 'Upload…', onclick: function () { pickMedia(apply); } }),
+        builtin,
+        el('button', { text: 'Clear', onclick: function () { apply(''); } })
+      ]),
+      url
+    ])]);
+  }
+
+  // Images are downscaled to <= 2048 px and stored inline so scenes stay self-contained.
+  function pickMedia(apply) {
+    var input = $('#fileMedia'); input.value = '';
+    input.onchange = function () {
+      var file = input.files[0]; if (!file) return;
+      if (/^video\//.test(file.type)) {
+        if (file.size <= 15 * 1024 * 1024) {
+          var fr = new FileReader(); fr.onload = function () { apply(fr.result); toast('Video added and saved inside the scene.'); }; fr.readAsDataURL(file);
+        } else {
+          var u = URL.createObjectURL(file); engine.registerMedia(u, 'video'); apply(u);
+          toast('Large video: it plays here, but host it and paste its URL before saving or embedding.', 6000);
+        }
+        return;
+      }
+      var img = new Image();
+      img.onload = function () {
+        var max = 2048, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+        var c = el('canvas'); c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        apply(file.type === 'image/png' || file.type === 'image/svg+xml' ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.9));
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = function () { toast('That image could not be read.'); };
+      img.src = URL.createObjectURL(file);
+    };
+    input.click();
+  }
+
+  function onSetting(k) {
+    if (k === 'duration') $('#scrub').max = scene.settings.duration;
+  }
+
+  // ---------- randomise ----------
+  var NO_RANDOM = { opacity: 1, blend: 1, mediaMode: 1, material: 0, colorMode: 0 };
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function hsl(h, s, l) {
+    var c = new THREE.Color(); c.setHSL(((h % 1) + 1) % 1, s, l); return '#' + c.getHexString();
+  }
+  function randomize() {
+    var layer = selected === 'scene' ? null : findLayer(selected);
+    if (!layer) {
+      var h = Math.random(), st = scene.settings;
+      st.bg1 = hsl(h, 0.5, 0.12); st.bg2 = hsl(h + 0.05, 0.6, 0.02);
+      st.bloom = +rand(0, 1.4).toFixed(2); st.camMode = ['orbit', 'pendulum', 'dolly', 'crane', 'orbit'][Math.floor(Math.random() * 5)];
+      st.camHeight = +rand(-2, 14).toFixed(1);
+    } else {
+      Lx.SCHEMA[layer.type].forEach(function (g) {
+        if (g.name === 'Transform') return;
+        g.fields.forEach(function (f) {
+          if (f.nr || NO_RANDOM[f.key]) return;
+          var p = layer.params;
+          if (f.type === 'range') {
+            var val = /Cycles$/.test(f.key) ? Math.round(rand(0, 2)) : f.min + (f.max - f.min) * Math.pow(Math.random(), 2.2);
+            p[f.key] = Math.round(val / f.step) * f.step;
+            p[f.key] = +p[f.key].toFixed(4);
+          } else if (f.type === 'select') {
+            var opts = f.options.map(optValue).filter(function (o) { return o !== 'image' && o !== 'glass'; });
+            p[f.key] = opts[Math.floor(Math.random() * opts.length)];
+          } else if (f.type === 'bool' && f.key !== 'landMask') p[f.key] = Math.random() > 0.5;
+        });
+        var hue = Math.random();
+        layer.params.colorA = hsl(hue, 0.85, 0.6); layer.params.colorB = hsl(hue + rand(0.25, 0.6), 0.85, 0.55);
+      });
+    }
+    scene = engine.load(scene); renderProps(); commit();
+  }
+
+  // ---------- top bar ----------
+  var presetSel = $('#presetSel');
+  presetSel.appendChild(el('option', { value: '', text: 'Presets…' }));
+  Object.keys(Lx.PRESET_NAMES).forEach(function (k) { presetSel.appendChild(el('option', { value: k, text: Lx.PRESET_NAMES[k] })); });
+  presetSel.addEventListener('change', function () { if (!presetSel.value) return; loadScene(Lx.preset(presetSel.value)); toast('Loaded preset: ' + Lx.PRESET_NAMES[presetSel.value]); presetSel.value = ''; });
+
+  $('#btnNew').onclick = function () { loadScene({ settings: {}, layers: [Lx.newLayer('grid')] }); };
+  $('#btnSave').onclick = function () {
+    download(new Blob([JSON.stringify(scene, null, 2)], { type: 'application/json' }), slug(scene.layers[0] && scene.layers[0].name) + '.lattice.json');
+  };
+  $('#btnOpen').onclick = function () { $('#fileOpen').value = ''; $('#fileOpen').click(); };
+  $('#fileOpen').onchange = function (e) {
+    var f = e.target.files[0]; if (!f) return;
+    f.text().then(function (t) { loadScene(JSON.parse(t)); toast('Opened ' + f.name); }).catch(function () { toast('That file is not a Lattice scene.'); });
+  };
+  $('#btnUndo').onclick = undo; $('#btnRedo').onclick = redo;
+  $('#btnRandom').onclick = randomize;
+  $('#btnCam').onclick = function () { engine.userCam = false; engine._freeInit = false; engine.applySettings(); toast('Camera reset'); };
+
+  // ---------- layer actions ----------
+  Array.prototype.forEach.call(document.querySelectorAll('[data-add]'), function (b) {
+    b.onclick = function () {
+      var l = Lx.newLayer(b.getAttribute('data-add'));
+      if (l.type === 'media') l.params.media = 'builtin:testcard';
+      engine.addLayer(l); select(l.id); commit();
+    };
+  });
+  $('#btnDup').onclick = function () {
+    var l = findLayer(selected); if (!l) return;
+    var c = JSON.parse(JSON.stringify(l)); c.id = Lx.uid(); c.name = l.name + ' copy';
+    engine.addLayer(c); select(c.id); commit();
+  };
+  $('#btnDel').onclick = function () {
+    var l = findLayer(selected); if (!l) return;
+    engine.removeLayer(l.id); scene = engine.data; select('scene'); commit();
+  };
+  function move(dir) {
+    var i = scene.layers.findIndex(function (l) { return l.id === selected; }), j = i + dir;
+    if (i < 0 || j < 0 || j >= scene.layers.length) return;
+    var t = scene.layers[i]; scene.layers[i] = scene.layers[j]; scene.layers[j] = t;
+    renderLayers(); commit();
+  }
+  $('#btnUp').onclick = function () { move(-1); };
+  $('#btnDown').onclick = function () { move(1); };
+
+  // ---------- timeline ----------
+  var scrub = $('#scrub'), scrubbing = false, playBtn = $('#btnPlay');
+  function setPlaying(p) { if (p) engine.play(); else engine.pause(); playBtn.textContent = p ? 'Pause' : 'Play'; }
+  playBtn.onclick = function () { setPlaying(!engine.playing); };
+  scrub.addEventListener('input', function () { scrubbing = true; engine.setTime(parseFloat(scrub.value)); });
+  scrub.addEventListener('change', function () { scrubbing = false; });
+  $('#aspectSel').addEventListener('change', function (e) { scene.settings.aspect = e.target.value; layoutFrame(); commit(); });
+  engine.onFrame = function (t) {
+    if (!scrubbing) scrub.value = t;
+    $('#timeLabel').textContent = t.toFixed(2) + ' / ' + scene.settings.duration + ' s';
+    $('#fpsLabel').textContent = engine.fps + ' fps';
+  };
+
+  // ---------- modal + exports ----------
+  function openModal(title, body) {
+    $('#modalTitle').textContent = title;
+    var b = $('#modalBody'); b.innerHTML = ''; b.appendChild(body);
+    $('#modal').hidden = false;
+  }
+  function closeModal() { if (exportCancel) exportCancel.flag = true; $('#modal').hidden = true; }
+  $('#modalClose').onclick = closeModal;
+  $('#modal').addEventListener('click', function (e) { if (e.target.id === 'modal') closeModal(); });
+
+  function sizeFor(longSide) {
+    var a = aspectValue() || (frame.clientWidth / frame.clientHeight);
+    var w, h;
+    if (a >= 1) { w = longSide; h = longSide / a; } else { h = longSide; w = longSide * a; }
+    return [Math.round(w / 2) * 2, Math.round(h / 2) * 2];
+  }
+  function sizeSelect(options, def) {
+    var s = el('select');
+    options.forEach(function (L) { var wh = sizeFor(L); s.appendChild(el('option', { value: L, text: wh[0] + ' × ' + wh[1] })); });
+    s.value = def; return s;
+  }
+
+  $('#btnPng').onclick = function () {
+    var size = sizeSelect([1280, 1920, 3840, 7680], 1920);
+    var body = el('div', null, [
+      el('p', { text: 'Exports the current frame as a PNG. A transparent background is kept when Background is set to Transparent.' }),
+      el('div', { class: 'form-row' }, [el('label', null, ['Size', size])]),
+      el('div', { class: 'modal-actions' }, [el('button', { class: 'primary', text: 'Download PNG', onclick: function () {
+        var wh = sizeFor(parseInt(size.value, 10));
+        engine.snapshot(wh[0], wh[1]).then(function (b) { download(b, 'lattice-' + wh[0] + 'x' + wh[1] + '.png'); closeModal(); });
+      } })])
+    ]);
+    openModal('Export image', body);
+  };
+
+  var exportCancel = null;
+  function loadScript(src) {
+    return new Promise(function (res, rej) { var s = el('script', { src: src }); s.onload = res; s.onerror = function () { rej(new Error('Could not load ' + src)); }; document.head.appendChild(s); });
+  }
+  function pickCodec(w, h, fps) {
+    var list = ['avc1.640034', 'avc1.640033', 'avc1.64002a', 'avc1.4d0034', 'avc1.42003e'];
+    var i = 0;
+    function next() {
+      if (i >= list.length) return Promise.reject(new Error('No H.264 encoder for ' + w + '×' + h));
+      var codec = list[i++];
+      return VideoEncoder.isConfigSupported({ codec: codec, width: w, height: h, bitrate: 8e6, framerate: fps })
+        .then(function (r) { return r.supported ? codec : next(); }, next);
+    }
+    return next();
+  }
+  // Frame-accurate MP4 through WebCodecs + mp4-muxer.
+  function exportMP4(w, h, fps, progress, cancel) {
+    var muxerReady = window.Mp4Muxer ? Promise.resolve() : loadScript('https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.js');
+    return muxerReady.then(function () { return pickCodec(w, h, fps); }).then(function (codec) {
+      var target = new Mp4Muxer.ArrayBufferTarget();
+      var muxer = new Mp4Muxer.Muxer({ target: target, video: { codec: 'avc', width: w, height: h }, fastStart: 'in-memory' });
+      var encErr = null;
+      var enc = new VideoEncoder({ output: function (chunk, meta) { muxer.addVideoChunk(chunk, meta); }, error: function (e) { encErr = e; } });
+      enc.configure({ codec: codec, width: w, height: h, bitrate: Math.min(60e6, Math.round(w * h * fps * 0.15)), framerate: fps });
+      var wait = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+      return engine.renderSequence(w, h, fps, function (canvas, i, total) {
+        if (cancel.flag) throw new Error('cancelled');
+        if (encErr) throw encErr;
+        var vf = new VideoFrame(canvas, { timestamp: Math.round(i * 1e6 / fps), duration: Math.round(1e6 / fps) });
+        enc.encode(vf, { keyFrame: i % (fps * 2) === 0 }); vf.close();
+        progress((i + 1) / total);
+        var drain = function () { return enc.encodeQueueSize > 6 ? wait().then(drain) : wait(); };
+        return drain();
+      }).then(function () { return enc.flush(); }).then(function () {
+        muxer.finalize(); enc.close();
+        return new Blob([target.buffer], { type: 'video/mp4' });
+      }, function (err) { try { enc.close(); } catch (e) { /* already closed */ } throw err; });
+    });
+  }
+  // Fallback: real-time WebM via MediaRecorder (browsers without WebCodecs).
+  function exportRealtime(w, h, fps, progress, cancel) {
+    var mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].filter(function (m) { return window.MediaRecorder && MediaRecorder.isTypeSupported(m); })[0];
+    if (!mime) return Promise.reject(new Error('This browser cannot record video. Try Chrome or Edge.'));
+    var r = engine.renderer, pr = r.getPixelRatio(), s = scene.settings, ms = s.duration / s.speed * 1000;
+    engine._fixed = true; r.setPixelRatio(1); engine._setSize(w, h);
+    var stream = r.domElement.captureStream(fps), chunks = [];
+    var rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: Math.min(40e6, w * h * fps * 0.12) });
+    rec.ondataavailable = function (e) { if (e.data.size) chunks.push(e.data); };
+    engine.setTime(0); setPlaying(true);
+    return new Promise(function (res, rej) {
+      var t0 = performance.now();
+      var iv = setInterval(function () {
+        var f = (performance.now() - t0) / ms; progress(Math.min(1, f));
+        if (cancel.flag || f >= 1) { clearInterval(iv); rec.stop(); }
+      }, 100);
+      rec.onstop = function () {
+        engine._fixed = false; r.setPixelRatio(pr); engine.resize();
+        if (cancel.flag) rej(new Error('cancelled')); else res(new Blob(chunks, { type: 'video/webm' }));
+      };
+      rec.start();
+    });
+  }
+
+  $('#btnVideo').onclick = function () {
+    var canMP4 = 'VideoEncoder' in window && 'VideoFrame' in window;
+    var size = sizeSelect([1280, 1920, 3840], 1920);
+    var fps = el('select', null, [el('option', { value: 30, text: '30 fps' }), el('option', { value: 60, text: '60 fps' }), el('option', { value: 25, text: '25 fps' }), el('option', { value: 24, text: '24 fps' })]);
+    fps.value = '30';
+    var fmt = el('select', null, [
+      canMP4 ? el('option', { value: 'mp4', text: 'MP4 (H.264, frame-accurate)' }) : null,
+      el('option', { value: 'webm', text: 'WebM (records in real time)' })
+    ]);
+    var bar = el('div'), status = el('p', { text: '' });
+    var go = el('button', { class: 'primary', text: 'Render video' });
+    var s = scene.settings;
+    go.onclick = function () {
+      var wh = sizeFor(parseInt(size.value, 10)), f = parseInt(fps.value, 10);
+      exportCancel = { flag: false };
+      go.disabled = true; status.textContent = 'Rendering ' + wh[0] + '×' + wh[1] + '…';
+      var prog = function (x) { bar.style.width = Math.round(x * 100) + '%'; };
+      var job = fmt.value === 'mp4' ? exportMP4(wh[0], wh[1], f, prog, exportCancel) : exportRealtime(wh[0], wh[1], f, prog, exportCancel);
+      job.then(function (blob) {
+        download(blob, 'lattice-' + wh[0] + 'x' + wh[1] + '.' + (fmt.value === 'mp4' ? 'mp4' : 'webm'));
+        status.textContent = 'Done: ' + (blob.size / 1048576).toFixed(1) + ' MB'; go.disabled = false; exportCancel = null;
+      }, function (err) {
+        go.disabled = false; exportCancel = null;
+        status.textContent = err.message === 'cancelled' ? 'Cancelled.' : 'Export failed: ' + err.message;
+      });
+    };
+    openModal('Export video', el('div', null, [
+      el('p', { text: 'Renders one full loop (' + (s.duration / s.speed).toFixed(1) + ' s) at an exact frame rate. Turn on Seamless loop in Scene settings for a loop with no jump.' }),
+      el('div', { class: 'form-row' }, [el('label', null, ['Size', size]), el('label', null, ['Frame rate', fps]), el('label', null, ['Format', fmt])]),
+      el('div', { class: 'progress' }, [bar]), status,
+      el('div', { class: 'modal-actions' }, [el('button', { text: 'Cancel', onclick: closeModal }), go])
+    ]));
+  };
+
+  function embedSnippet(useSrc) {
+    var aspect = (scene.settings.aspect && scene.settings.aspect !== 'free' ? scene.settings.aspect : '16:9').replace(':', ' / ');
+    var head = '<!-- Lattice scene. Upload lattice-widget.js and lattice-engine.js to /lattice/ on your site. -->\n<script src="/lattice/lattice-widget.js" defer><\/script>\n';
+    if (useSrc) return head + '<lattice-scene src="/lattice/scenes/my-scene.json" style="display:block;width:100%;aspect-ratio:' + aspect + '"></lattice-scene>';
+    var json = JSON.stringify(scene).replace(/<\//g, '<\\/');
+    return head + '<lattice-scene style="display:block;width:100%;aspect-ratio:' + aspect + '">\n  <script type="application/json">' + json + '<\/script>\n</lattice-scene>';
+  }
+  $('#btnEmbed').onclick = function () {
+    var mode = el('select', null, [el('option', { value: 'inline', text: 'Scene inside the snippet' }), el('option', { value: 'src', text: 'Scene as a separate .json file' })]);
+    var code = el('textarea', { class: 'code', readonly: '', spellcheck: 'false' });
+    var refresh = function () { code.value = embedSnippet(mode.value === 'src'); };
+    mode.onchange = refresh; refresh();
+    var hasBlob = scene.layers.some(function (l) { return /^blob:/.test(l.params.media || ''); });
+    openModal('Embed on a website', el('div', null, [
+      el('p', null, ['Paste this where the animation should appear. The ', el('code', { text: '<lattice-scene>' }), ' tag sizes to its container, pauses when scrolled off screen and respects reduced-motion settings. Add ', el('code', { text: 'interactive' }), ' to let visitors drag the camera.']),
+      hasBlob ? el('p', { text: 'Warning: one layer uses a large local video. Host that video and paste its URL in the layer before embedding.' }) : null,
+      el('div', { class: 'form-row' }, [el('label', null, ['Snippet style', mode])]),
+      code,
+      el('div', { class: 'modal-actions' }, [
+        el('button', { text: 'Download scene .json', onclick: function () { download(new Blob([JSON.stringify(scene)], { type: 'application/json' }), 'my-scene.json'); } }),
+        el('button', { text: 'Download standalone .html', onclick: function () {
+          download(new Blob([Lx.standaloneHTML(scene, 'Lattice scene')], { type: 'text/html' }), 'lattice-scene.html');
+        } }),
+        el('button', { class: 'primary', text: 'Copy snippet', onclick: function () {
+          (navigator.clipboard ? navigator.clipboard.writeText(code.value) : Promise.reject()).then(function () { toast('Snippet copied'); }, function () { code.select(); document.execCommand('copy'); toast('Snippet copied'); });
+        } })
+      ])
+    ]));
+  };
+
+  // ---------- keyboard ----------
+  document.addEventListener('keydown', function (e) {
+    var tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' && e.target.type !== 'range' && e.target.type !== 'checkbox' || tag === 'textarea' || tag === 'select') return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+    else if (e.key === ' ') { e.preventDefault(); setPlaying(!engine.playing); }
+    else if (e.key === 'r' && !e.ctrlKey && !e.metaKey) randomize();
+    else if (e.key === 'Escape') closeModal();
+  });
+
+  function renderAll() {
+    $('#aspectSel').value = scene.settings.aspect || '16:9';
+    $('#scrub').max = scene.settings.duration;
+    layoutFrame(); renderLayers(); renderProps(); updateUndo();
+  }
+  selected = scene.layers[0] ? scene.layers[0].id : 'scene';
+  renderAll();
+  window.latticeEditor = { engine: engine, get scene() { return scene; } }; // handy for debugging in the console
+})();
+
+</script>
+<style>#hub-back{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:2147483000;display:flex;align-items:center;gap:6px;height:40px;padding:0 10px 0 8px;max-width:34px;overflow:hidden;white-space:nowrap;border-radius:0 10px 10px 0;background:#fff;color:#111;border:1px solid rgba(0,0,0,.18);border-left:0;font:600 13px/1 system-ui,-apple-system,'Segoe UI',sans-serif;text-decoration:none;box-shadow:0 4px 16px rgba(0,0,0,.45);transition:max-width .2s ease}#hub-back:hover,#hub-back:focus-visible{max-width:140px}#hub-back svg{flex:none}@media print{#hub-back{display:none}}</style>
+<a href="index.html" id="hub-back" title="Back to all tools" aria-label="Back to all tools"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>All tools</a>
+</body>
+</html>

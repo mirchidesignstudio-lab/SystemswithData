@@ -1,0 +1,1714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body style="margin:0">
+<title>Geomark</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: drafting-table shell — tool rail | white artboard on a cool stage | settings panel; floating selection bar */
+:root{
+  --bg:#e9edf2; --panel:#ffffff; --panel-2:#f3f5f8; --line:#dce2e9; --ink:#141b24; --ink-2:#5b6676;
+  --accent:#2457e6; --accent-ink:#ffffff; --accent-soft:#e5ebfd; --guide:#e0457b; --stage:#dfe4ea;
+  --danger:#cf3434; --shadow:0 1px 2px rgba(20,27,36,.06),0 10px 28px rgba(20,27,36,.09);
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Figtree", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e1217; --panel:#161b22; --panel-2:#1d242d; --line:#2b333e; --ink:#e7ecf2; --ink-2:#98a4b3;
+  --accent:#7090ff; --accent-ink:#0a0f1f; --accent-soft:#1e2948; --guide:#ff6f9c; --stage:#0a0d11;
+  --danger:#ff6b6b; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.45); color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0e1217; --panel:#161b22; --panel-2:#1d242d; --line:#2b333e; --ink:#e7ecf2; --ink-2:#98a4b3;
+  --accent:#7090ff; --accent-ink:#0a0f1f; --accent-soft:#1e2948; --guide:#ff6f9c; --stage:#0a0d11;
+  --danger:#ff6b6b; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.45); color-scheme:dark }
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;overflow:hidden}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+#app{height:100%;display:grid;gap:10px;
+  grid-template-columns:56px minmax(0,1fr) 300px;grid-template-rows:52px minmax(0,1fr);
+  grid-template-areas:"top top top" "rail stage panel";
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* top bar */
+.top{grid-area:top;display:flex;align-items:center;gap:10px;min-width:0}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+.brand svg{flex:none}
+.brand b{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:-.02em}
+.brand span{color:var(--ink-2);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.count{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);white-space:nowrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 14px;border-radius:10px;
+  border:1px solid var(--line);background:var(--panel);font-weight:600;font-size:13px;white-space:nowrap;transition:background .15s,border-color .15s}
+.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.block{width:100%}
+.btn svg{width:16px;height:16px}
+
+/* rail */
+.rail{grid-area:rail;display:flex;flex-direction:column;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:var(--shadow)}
+.rail .sep{height:1px;background:var(--line);margin:4px 2px}
+.tb{position:relative;width:42px;height:42px;border-radius:10px;border:0;background:transparent;display:grid;place-items:center;color:var(--ink-2)}
+.tb svg{width:20px;height:20px}
+.tb:hover{background:var(--panel-2);color:var(--ink)}
+.tb.on{background:var(--accent-soft);color:var(--accent)}
+.tb:disabled{opacity:.35;cursor:default}
+.tb.warn{background:var(--danger);color:#fff}
+.tb[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:50px;top:50%;transform:translateY(-50%);background:var(--ink);color:var(--bg);
+  font-size:12px;padding:5px 8px;border-radius:6px;white-space:nowrap;z-index:30;pointer-events:none}
+
+/* stage */
+.stage{grid-area:stage;position:relative;border-radius:14px;overflow:hidden;background:var(--stage);border:1px solid var(--line);touch-action:none}
+.stage canvas{position:absolute;inset:0;display:block;touch-action:none}
+.stage.t-sketch canvas{cursor:crosshair}
+.stage.t-pan canvas,.stage.panning canvas{cursor:grab}
+.stage.t-select canvas{cursor:default}
+
+.hint{position:absolute;left:16px;top:16px;max-width:330px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);z-index:5}
+.hint h2{font-family:var(--f-display);font-size:18px;margin:0 0 6px;letter-spacing:-.01em;text-wrap:balance}
+.hint p{margin:0 0 10px;color:var(--ink-2);line-height:1.5}
+.hint ol{margin:0 0 12px;padding-left:18px;line-height:1.6}
+.hint .row{display:flex;gap:8px;flex-wrap:wrap}
+
+.toast{position:absolute;left:50%;top:14px;transform:translate(-50%,-8px);opacity:0;pointer-events:none;background:var(--ink);color:var(--bg);
+  border-radius:999px;padding:7px 14px;font-size:13px;font-weight:500;transition:opacity .2s,transform .2s;z-index:6;white-space:nowrap}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast i{font-style:normal;font-family:var(--f-mono);font-size:12px;opacity:.75;margin-left:6px}
+
+.zoom{position:absolute;right:12px;top:12px;display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px;z-index:4}
+.zoom button{border:0;background:transparent;height:30px;min-width:30px;border-radius:7px;font-family:var(--f-mono);font-size:12px}
+.zoom button:hover{background:var(--panel-2)}
+
+.selbar{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:calc(100% - 24px);display:flex;align-items:center;gap:2px;
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:5px;box-shadow:var(--shadow);overflow-x:auto;z-index:5}
+.selbar .lbl{font-size:12.5px;font-weight:600;padding:0 10px;white-space:nowrap;color:var(--ink)}
+.selbar .lbl small{display:block;font-family:var(--f-mono);font-weight:400;font-size:11px;color:var(--ink-2)}
+.selbar .vs{width:1px;align-self:stretch;background:var(--line);margin:4px 3px;flex:none}
+.sb{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:transparent;border-radius:9px;padding:5px 7px;min-width:52px;color:var(--ink);font-size:11px}
+.sb svg{width:18px;height:18px}
+.sb:hover{background:var(--panel-2)}
+.sb:disabled{opacity:.35;cursor:default;background:transparent}
+.sb.hot{color:var(--accent)}
+.sb.del{color:var(--danger)}
+
+/* panel */
+.panel{grid-area:panel;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);padding:6px;gap:4px;border-bottom:1px solid var(--line)}
+.tab{border:0;background:transparent;border-radius:8px;padding:8px 0;font-weight:600;font-size:13px;color:var(--ink-2)}
+.tab.on{background:var(--panel-2);color:var(--ink)}
+.pane{padding:14px 16px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:16px;min-height:0}
+.pane[hidden]{display:none!important}
+.grp{display:flex;flex-direction:column;gap:12px}
+.grp h3{margin:0;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.field label{font-weight:500}
+.field output{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.desc{font-size:12px;color:var(--ink-2);line-height:1.45;margin:0}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0;height:20px}
+.sw{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;cursor:pointer}
+.sw .t{display:flex;flex-direction:column;gap:2px}
+.sw .t b{font-weight:500}
+.sw input{appearance:none;flex:none;width:38px;height:22px;border-radius:999px;background:var(--line);position:relative;transition:background .15s;cursor:pointer;margin:0}
+.sw input::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+.sw input:checked{background:var(--accent)}
+.sw input:checked::after{transform:translateX(16px)}
+.seg{display:flex;background:var(--panel-2);border-radius:9px;padding:3px;gap:2px}
+.seg button{flex:1;border:0;background:transparent;border-radius:7px;padding:6px 0;font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.seg button.on{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.swatch{aspect-ratio:1;max-width:100%;border-radius:9px;border:1px solid var(--line);position:relative}
+.swatch.on{outline:2px solid var(--accent);outline-offset:2px}
+.swatch input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.custom{background:conic-gradient(#e0457b,#ffb020,#3fbf6a,#2bb3d9,#2457e6,#8b5cf6,#e0457b)}
+.drop{border:1.5px dashed var(--line);border-radius:12px;padding:18px 12px;text-align:center;color:var(--ink-2);display:flex;flex-direction:column;gap:8px;align-items:center;cursor:pointer}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop b{color:var(--ink)}
+.kbd{font-family:var(--f-mono);font-size:11px;padding:1px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--panel-2)}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;font-size:12.5px;color:var(--ink-2)}
+
+/* point editing bar */
+.slid{flex:none;display:flex;flex-direction:column;gap:2px;padding:2px 8px;min-width:120px;font-size:11px;color:var(--ink-2)}
+.slid .hd{display:flex;justify-content:space-between;gap:6px}
+.slid output{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.stage.t-points canvas{cursor:default}
+.stage.t-cut canvas{cursor:crosshair}
+.stage.picking canvas{cursor:copy}
+
+/* color picker */
+.targets{display:flex;gap:6px;align-items:center}
+.tgt{flex:1;min-width:0;display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:6px 8px;font-weight:600;font-size:12.5px;color:var(--ink-2)}
+.tgt.on{border-color:var(--accent);color:var(--ink);box-shadow:0 0 0 1px var(--accent)}
+.chip{width:22px;height:22px;border-radius:6px;border:1px solid var(--line);flex:none;background:var(--c,transparent)}
+.tgt[data-tgt=stroke] .chip{background:transparent;box-shadow:inset 0 0 0 5px var(--c,transparent)}
+.chip.none{background:linear-gradient(135deg,transparent 44%,var(--danger) 44%,var(--danger) 56%,transparent 56%)!important;box-shadow:none!important}
+.ibtn{flex:none;width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;color:var(--ink-2)}
+.ibtn:hover{color:var(--ink);border-color:var(--ink-2)}
+.ibtn.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.ibtn svg{width:17px;height:17px}
+.sv{position:relative;height:150px;border-radius:10px;cursor:crosshair;touch-action:none;
+  background:linear-gradient(to top,#000,rgba(0,0,0,0)),linear-gradient(to right,#fff,hsl(var(--h,220),100%,50%))}
+.sv.off{opacity:.45}
+.sv .knob{position:absolute;width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35),0 1px 3px rgba(0,0,0,.4);transform:translate(-50%,-50%);pointer-events:none}
+input.hue{-webkit-appearance:none;appearance:none;height:14px;border-radius:7px;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
+input.hue::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.3)}
+input.hue::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:0;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+.hexrow{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr auto;gap:6px;align-items:end}
+.hexrow label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;font-weight:600;letter-spacing:.06em;color:var(--ink-2);min-width:0}
+.hexrow input{width:100%;min-width:0;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);padding:0 6px;font-family:var(--f-mono);font-size:12px}
+.rowsw{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.rowsw button{width:26px;height:26px;border-radius:7px;border:1px solid var(--line);padding:0}
+.rowsw button:hover{transform:scale(1.08)}
+.rowsw .empty{font-size:12px;color:var(--ink-2)}
+.rowsw .sep{width:1px;height:20px;background:var(--line);margin:0 2px}
+
+/* typed values next to sliders */
+.numwrap{display:inline-flex;align-items:center;gap:3px;font-family:var(--f-mono);font-size:12px;color:var(--ink-2)}
+.numwrap i{font-style:normal}
+input.num{width:56px;height:24px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);padding:0 6px;font-family:var(--f-mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums;-moz-appearance:textfield;appearance:textfield}
+input.num::-webkit-inner-spin-button,input.num::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input.num:hover{border-color:var(--ink-2)}
+input.num:focus{border-color:var(--accent);background:var(--panel);outline:none;box-shadow:0 0 0 2px var(--accent-soft)}
+.slid input.num{width:48px;height:20px;font-size:11px;padding:0 4px}
+.huerow{display:flex;align-items:center;gap:8px}
+.huerow .hue{flex:1;min-width:0}
+
+/* layers */
+.lyrbar{display:flex;gap:6px}
+.lyrbar .btn{flex:1;padding:0 8px;height:32px;font-size:12.5px}
+.lyrbar .btn:disabled{opacity:.4;cursor:default}
+.layers{list-style:none;margin:0;display:flex;flex-direction:column;gap:1px;border:1px solid var(--line);border-radius:10px;padding:4px;min-height:60px}
+.lyr{position:relative;display:flex;align-items:center;gap:6px;height:34px;padding:0 4px 0 calc(4px + var(--d,0) * 16px);border-radius:7px;cursor:pointer;user-select:none}
+.lyr:hover{background:var(--panel-2)}
+.lyr.on{background:var(--accent-soft)}
+.lyr.on .lnm{color:var(--accent);font-weight:600}
+.lyr.off .lnm,.lyr.off .lth{opacity:.4}
+.lcar{flex:none;width:18px;height:18px;border:0;background:transparent;padding:0;display:grid;place-items:center;color:var(--ink-2)}
+.lcar svg{width:12px;height:12px;transition:transform .15s}
+.lcar.open svg{transform:rotate(90deg)}
+.lth{flex:none;width:18px;height:18px;border-radius:5px;border:1px solid var(--line);background:var(--c,transparent);box-shadow:inset 0 0 0 2.5px var(--s,transparent)}
+.lth.grp{border:0;background:none;box-shadow:none;color:var(--ink-2);display:grid;place-items:center}
+.lth.grp svg{width:16px;height:16px}
+.lnm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.lnm small{font-family:var(--f-mono);font-size:11px;color:var(--ink-2);margin-left:6px;font-weight:400}
+.lnm input{width:100%;height:24px;border:1px solid var(--accent);border-radius:5px;background:var(--panel);padding:0 5px;font-size:13px}
+.lic{flex:none;width:26px;height:26px;border:0;background:transparent;border-radius:6px;display:grid;place-items:center;color:var(--ink-2);opacity:0}
+.lic svg{width:15px;height:15px}
+.lyr:hover .lic,.lic.act,.lyr:focus-within .lic{opacity:1}
+.lic:hover{background:var(--panel);color:var(--ink)}
+@media (hover:none){.lic{opacity:1}}
+.lyr[data-zone=above]::before,.lyr[data-zone=below]::after{content:"";position:absolute;left:calc(4px + var(--d,0) * 16px);right:4px;height:2px;background:var(--accent);border-radius:2px}
+.lyr[data-zone=above]::before{top:-1px}
+.lyr[data-zone=below]::after{bottom:-1px}
+.lyr[data-zone=in]{box-shadow:inset 0 0 0 2px var(--accent)}
+.lyr-empty{padding:14px 8px;text-align:center;color:var(--ink-2);font-size:12.5px}
+.stage.t-merge canvas,.stage.t-negate canvas{cursor:crosshair}
+
+@media (max-width:860px){
+  #app{grid-template-columns:minmax(0,1fr);grid-template-rows:48px minmax(0,1fr) auto minmax(0,38%);grid-template-areas:"top" "stage" "rail" "panel";gap:8px;padding-block:8px}
+  .rail{flex-direction:row;overflow-x:auto;justify-content:flex-start}
+  .rail .sep{width:1px;height:auto;margin:2px 4px}
+  .tb[data-tip]:hover::after{display:none}
+  .brand span,.count,.top .hide-sm{display:none}
+  .hint{right:12px;left:12px;max-width:none;top:12px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div id="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15 6 L23 20 L7 20 Z" fill="var(--accent)"/><circle cx="15" cy="15" r="2.2" fill="currentColor"/></svg>
+      <b>Geomark</b><span>Rough sketch in, exact geometry out</span>
+    </div>
+    <span class="count" id="count">0 shapes</span>
+    <button class="btn hide-sm" id="copySvg" title="Copy SVG code to the clipboard">Copy SVG</button>
+    <button class="btn" id="expPng">PNG</button>
+    <button class="btn primary" id="expSvg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Export SVG</button>
+  </header>
+
+  <nav class="rail" aria-label="Tools">
+    <button class="tb" data-tool="select" data-tip="Select & move  V" aria-label="Select tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 3l14 8-6 2-3 6z"/></svg></button>
+    <button class="tb on" data-tool="sketch" data-tip="Sketch  B" aria-label="Sketch tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3-6 5-9 7-9s1 7 4 7 4-5 7-8"/><circle cx="20" cy="7" r="1.6" fill="currentColor"/></svg></button>
+    <button class="tb" data-tool="points" data-tip="Edit points  A / double-click a shape" aria-label="Edit points tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 18C7 7 17 7 20 18"/><rect x="2" y="16" width="4" height="4" fill="currentColor" stroke="none"/><rect x="18" y="16" width="4" height="4" fill="currentColor" stroke="none"/><circle cx="12" cy="9.8" r="2.4" fill="var(--panel)"/></svg></button>
+    <button class="tb" data-tool="cut" data-tip="Cut shapes apart  K" aria-label="Cut tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.6 7.6L20 18M8.6 16.4L20 6"/></svg></button>
+    <button class="tb" data-tool="merge" data-tip="Merge: drag across shapes  M" aria-label="Merge by dragging"><svg viewBox="0 0 24 24"><path d="M9 4a6 6 0 0 1 5.3 3.2A6 6 0 1 1 9.8 16 6 6 0 1 1 9 4z" fill="currentColor"/></svg></button>
+    <button class="tb" data-tool="negate" data-tip="Negate: drag from a shape onto others  N" aria-label="Negate by dragging"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 6a6 6 0 1 0 3.2 11.1A6 6 0 0 1 12.2 6.9 6 6 0 0 0 9 6z"/><circle cx="15" cy="12" r="5.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 2"/></svg></button>
+    <button class="tb" data-tool="pan" data-tip="Pan  H / hold Space" aria-label="Pan tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg></button>
+    <div class="sep"></div>
+    <button class="tb" id="undo" data-tip="Undo  Ctrl Z" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7H4V2"/><path d="M4 7a9 9 0 1 1-1 7"/></svg></button>
+    <button class="tb" id="redo" data-tip="Redo  Ctrl Shift Z" aria-label="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h5V2"/><path d="M20 7a9 9 0 1 0 1 7"/></svg></button>
+    <div class="sep"></div>
+    <button class="tb" id="selAll" data-tip="Select all  Ctrl A" aria-label="Select all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3 2.4"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/></svg></button>
+    <button class="tb" id="clear" data-tip="Clear canvas" aria-label="Clear canvas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
+  </nav>
+
+  <main class="stage t-sketch" id="stage">
+    <canvas id="cv" aria-label="Drawing canvas"></canvas>
+    <div class="zoom"><button id="zOut" aria-label="Zoom out">−</button><button id="zFit" aria-label="Fit artboard">Fit</button><button id="zIn" aria-label="Zoom in">+</button></div>
+    <div class="toast" id="toast"></div>
+    <div class="hint" id="hint">
+      <h2>Sketch rough. Get exact geometry.</h2>
+      <p>Strokes become smooth organic shapes by default. Switch to Geometric in Refine to snap them to circles, polygons and stars.</p>
+      <ol>
+        <li>Draw a blob, leaf or swoosh and lift the pen.</li>
+        <li>Drag across shapes with Merge <span class="kbd">M</span> or Negate <span class="kbd">N</span>.</li>
+        <li>Group and reorder shapes in the Layers tab.</li>
+      </ol>
+      <div class="row"><button class="btn primary" id="hintGo">Start drawing</button><button class="btn" id="hintClear">Clear example</button></div>
+    </div>
+    <div class="selbar" id="selbar" hidden>
+      <div class="lbl" id="selLbl">Circle<small>r 144</small></div>
+      <div class="vs"></div>
+      <button class="sb hot" data-act="perfect" title="Re-grade selection  Enter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg>Perfect</button>
+      <button class="sb" data-act="points" data-single title="Edit corners and curves  A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 18C7 7 17 7 20 18"/><rect x="2" y="16" width="4" height="4" fill="currentColor" stroke="none"/><rect x="18" y="16" width="4" height="4" fill="currentColor" stroke="none"/><circle cx="12" cy="9.8" r="2.4" fill="var(--panel)"/></svg>Points</button>
+      <button class="sb" data-act="unite" data-multi title="Merge into one shape (or drag across shapes with the Merge tool)"><svg viewBox="0 0 24 24"><path d="M9 4a6 6 0 0 1 5.3 3.2A6 6 0 1 1 9.8 16 6 6 0 1 1 9 4z" fill="currentColor"/></svg>Merge</button>
+      <button class="sb" data-act="subtract" data-multi title="Cut the top shapes out of the bottom one"><svg viewBox="0 0 24 24"><circle cx="9" cy="12" r="6" fill="currentColor"/><circle cx="15" cy="12" r="6" fill="var(--panel)" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 2"/></svg>Subtract</button>
+      <button class="sb" data-act="intersect" data-multi title="Keep only the overlap"><svg viewBox="0 0 24 24"><circle cx="9" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="15" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M12 6.8a6 6 0 0 1 0 10.4 6 6 0 0 1 0-10.4z" fill="currentColor"/></svg>Intersect</button>
+      <button class="sb" data-act="exclude" data-multi title="Keep everything except the overlap"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" fill="currentColor" d="M9 6a6 6 0 1 0 0 12A6 6 0 1 0 9 6zM15 6a6 6 0 1 0 0 12A6 6 0 1 0 15 6z"/></svg>Exclude</button>
+      <div class="vs"></div>
+      <button class="sb" data-act="group" data-multi title="Group  Ctrl G"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 2.4"/><rect x="6.5" y="6.5" width="6" height="6" rx="1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="14.5" r="3.2" fill="currentColor" stroke="none"/></svg>Group</button>
+      <button class="sb" data-act="ungroup" data-ungroup title="Ungroup  Ctrl Shift G"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="2.5" width="9" height="9" rx="1.5"/><rect x="5" y="5" width="4" height="4" fill="currentColor" stroke="none"/><circle cx="16.5" cy="16.5" r="4.5"/><circle cx="16.5" cy="16.5" r="2" fill="currentColor" stroke="none"/></svg>Ungroup</button>
+      <div class="vs"></div>
+      <button class="sb" data-act="dup" title="Duplicate  Ctrl D"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>Duplicate</button>
+      <button class="sb" data-act="flipH" title="Flip horizontally"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3v18" stroke-dasharray="2 2"/><path d="M9 6L3 18h6z" fill="currentColor"/><path d="M15 6l6 12h-6z"/></svg>Flip H</button>
+      <button class="sb" data-act="flipV" title="Flip vertically"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 12h18" stroke-dasharray="2 2"/><path d="M6 9L18 3v6z" fill="currentColor"/><path d="M6 15l12 6v-6z"/></svg>Flip V</button>
+      <button class="sb" data-act="mirror" title="Mirror a copy across the center axis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20" stroke-dasharray="2 2"/><circle cx="6.5" cy="12" r="3.5" fill="currentColor"/><circle cx="17.5" cy="12" r="3.5"/></svg>Mirror</button>
+      <button class="sb" data-act="center" title="Center on artboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>Center</button>
+      <button class="sb" data-act="front" title="Bring to front  ]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="9" width="12" height="12" rx="2"/><rect x="9" y="3" width="12" height="12" rx="2" fill="currentColor"/></svg>Front</button>
+      <button class="sb" data-act="back" title="Send to back  ["><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="12" height="12" rx="2" fill="currentColor"/><rect x="3" y="9" width="12" height="12" rx="2" fill="var(--panel)"/></svg>Back</button>
+      <div class="vs"></div>
+      <div class="slid"><div class="hd"><label for="selRot">Rotate</label><span class="numwrap"><input type="number" class="num" id="selRotNum" step="1" aria-label="Rotation in degrees"><i>°</i></span></div><input type="range" id="selRot" min="-180" max="180" value="0"></div>
+      <div class="vs"></div>
+      <button class="sb del" data-act="delete" title="Delete  Del"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Delete</button>
+    </div>
+    <div class="selbar" id="ptbar" hidden>
+      <div class="lbl" id="ptLbl">Edit points<small>click a shape</small></div>
+      <div class="vs"></div>
+      <button class="sb" data-pact="corner" title="Make sharp corners"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 20V5h15"/><rect x="2.5" y="2.5" width="5" height="5" fill="currentColor" stroke="none"/></svg>Corner</button>
+      <button class="sb" data-pact="smooth" title="Make smooth curves"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 20C5 10 10 5 20 5"/><circle cx="8.2" cy="9.4" r="2.6" fill="currentColor" stroke="none"/></svg>Curve</button>
+      <button class="sb" data-pact="add" title="Add a point in the middle of the edge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 16h18"/><circle cx="12" cy="16" r="2.6" fill="currentColor"/><path d="M12 3v7M8.5 6.5h7"/></svg>Add point</button>
+      <button class="sb" data-pact="straight" title="Make the edge straight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 18L20 6"/><rect x="2" y="16" width="4" height="4" fill="currentColor" stroke="none"/><rect x="18" y="4" width="4" height="4" fill="currentColor" stroke="none"/></svg>Straighten</button>
+      <div class="vs"></div>
+      <div class="slid" id="bendBox"><div class="hd"><label for="bend">Bend edge</label><span class="numwrap"><input type="number" class="num" id="bendNum" min="-100" max="100" step="1" value="0" aria-label="Bend amount"></span></div><input type="range" id="bend" min="-100" max="100" value="0"></div>
+      <div class="slid" id="rotBox"><div class="hd"><label for="prot">Rotate points</label><span class="numwrap"><input type="number" class="num" id="protNum" min="-360" max="360" step="1" value="0" aria-label="Rotate points by degrees"><i>°</i></span></div><input type="range" id="prot" min="-180" max="180" value="0"></div>
+      <div class="slid" id="sclBox"><div class="hd"><label for="pscl">Scale points</label><span class="numwrap"><input type="number" class="num" id="psclNum" min="5" max="1000" step="1" value="100" aria-label="Scale points by percent"><i>%</i></span></div><input type="range" id="pscl" min="25" max="250" value="100"></div>
+      <div class="vs"></div>
+      <button class="sb del" data-pact="delete" title="Delete points, or open the shape at the selected edge  Del"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Delete</button>
+      <button class="sb hot" data-pact="done" title="Finish editing  Esc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>Done</button>
+    </div>
+  </main>
+
+  <aside class="panel" aria-label="Settings">
+    <div class="tabs" role="tablist">
+      <button class="tab on" data-tab="refine" role="tab">Refine</button>
+      <button class="tab" data-tab="grade" role="tab">Grade</button>
+      <button class="tab" data-tab="style" role="tab">Style</button>
+      <button class="tab" data-tab="trace" role="tab">Trace</button>
+      <button class="tab" data-tab="layers" role="tab">Layers</button>
+    </div>
+
+    <section class="pane" data-pane="refine">
+      <div class="field"><div class="hd"><label>Shape style</label></div>
+        <div class="seg" data-seg="mode"><button data-val="organic">Organic</button><button data-val="geometric">Geometric</button></div>
+        <p class="desc">Organic (default) keeps strokes as smooth, flowing shapes. Geometric snaps them to circles, polygons and stars. Perfect always snaps to geometry.</p></div>
+      <label class="sw"><span class="t"><b>Auto-perfect strokes</b><span class="desc">Each stroke becomes clean geometry when you lift the pen. Turn off to sketch freely, then press Perfect.</span></span><input type="checkbox" id="autoPerfect" data-key="autoPerfect"></label>
+      <div class="grp">
+        <h3>Recognition</h3>
+        <div class="field"><div class="hd"><label for="perfect">Snap strength</label><output data-for="perfect"></output></div><input type="range" id="perfect" data-key="perfect" min="0" max="100"><p class="desc">Higher values pull wobbly strokes harder toward circles and regular polygons.</p></div>
+        <div class="field"><div class="hd"><label for="corner">Corner detection</label><output data-for="corner"></output></div><input type="range" id="corner" data-key="corner" min="0" max="100"></div>
+        <div class="field"><div class="hd"><label for="smooth">Curve smoothness</label><output data-for="smooth"></output></div><input type="range" id="smooth" data-key="smooth" min="0" max="100"></div>
+      </div>
+      <div class="grp">
+        <h3>Geometry</h3>
+        <div class="field"><div class="hd"><label>Angle snap</label><output data-for="angle"></output></div>
+          <div class="seg" data-seg="angle"><button data-val="0">Off</button><button data-val="15">15°</button><button data-val="30">30°</button><button data-val="45">45°</button><button data-val="90">90°</button></div></div>
+        <div class="field"><div class="hd"><label for="radius">Corner radius</label><output data-for="radius"></output></div><input type="range" id="radius" data-key="radius" min="0" max="150"><p class="desc">Rounds polygon corners. Applies to selected polygons too.</p></div>
+      </div>
+      <button class="btn block" id="perfectSel">Perfect selected shapes <span class="kbd">Enter</span></button>
+      <div class="grp">
+        <h3>Shortcuts</h3>
+        <div class="keys">
+          <span class="kbd">B</span><span>Sketch</span><span class="kbd">V</span><span>Select, drag to move</span>
+          <span class="kbd">A</span><span>Edit points (or double-click a shape)</span><span class="kbd">K</span><span>Cut shapes apart</span>
+          <span class="kbd">I</span><span>Pick a color from a shape</span><span class="kbd">Dbl-click</span><span>Add a point on an edge</span>
+          <span class="kbd">Shift</span><span>Add to selection</span><span class="kbd">Del</span><span>Delete selection</span>
+          <span class="kbd">M</span><span>Merge: drag across shapes</span><span class="kbd">N</span><span>Negate: drag from a shape onto others</span>
+          <span class="kbd">Ctrl G</span><span>Group</span><span class="kbd">Ctrl Shift G</span><span>Ungroup</span>
+          <span class="kbd">Ctrl click</span><span>Select inside a group</span><span class="kbd">Ctrl D</span><span>Duplicate</span>
+          <span class="kbd">Space</span><span>Hold to pan, scroll to zoom</span><span class="kbd">Alt</span><span>Free rotate, no snap</span>
+        </div>
+      </div>
+      <button class="btn block" id="resetSet">Reset settings to defaults</button>
+    </section>
+
+    <section class="pane" data-pane="grade" hidden>
+      <div class="grp">
+        <h3>Proportion</h3>
+        <label class="sw"><span class="t"><b>Golden-ratio sizing</b><span class="desc">Radii and sides snap to Fibonacci sizes (21, 34, 55, 89, 144, 233, 377) and near-golden rectangles lock to 1 : 1.618.</span></span><input type="checkbox" id="golden" data-key="golden"></label>
+        <label class="sw"><span class="t"><b>Snap to other shapes</b><span class="desc">Shares centers, vertices and radii, so circles become concentric and edges meet exactly.</span></span><input type="checkbox" id="shapesnap" data-key="shapesnap"></label>
+        <label class="sw"><span class="t"><b>Mirror symmetry</b><span class="desc">Draw on one side of the center axis; the other side follows.</span></span><input type="checkbox" id="symmetry" data-key="symmetry"></label>
+      </div>
+      <div class="grp">
+        <h3>Grid</h3>
+        <label class="sw"><span class="t"><b>Snap to grid</b></span><input type="checkbox" id="grid" data-key="grid"></label>
+        <div class="field"><div class="hd"><label for="gridSize">Grid size</label><output data-for="gridSize"></output></div><input type="range" id="gridSize" data-key="gridSize" min="10" max="100" step="5"></div>
+      </div>
+      <div class="grp">
+        <h3>Guides on artboard</h3>
+        <label class="sw"><span class="t"><b>Grid lines</b></span><input type="checkbox" id="showGrid" data-key="showGrid"></label>
+        <label class="sw"><span class="t"><b>Golden spiral</b><span class="desc">Fibonacci squares with the spiral, for laying out curves.</span></span><input type="checkbox" id="showSpiral" data-key="showSpiral"></label>
+        <label class="sw"><span class="t"><b>Fibonacci circles</b><span class="desc">Concentric rings at r 21 to 377 around the center.</span></span><input type="checkbox" id="showCircles" data-key="showCircles"></label>
+      </div>
+    </section>
+
+    <section class="pane" data-pane="style" hidden>
+      <div class="grp">
+        <h3>Color</h3>
+        <div class="targets">
+          <button class="tgt on" data-tgt="fill"><span class="chip" id="chipFill"></span>Fill</button>
+          <button class="tgt" data-tgt="stroke"><span class="chip" id="chipStroke"></span>Stroke</button>
+          <button class="ibtn" id="swapCol" title="Swap fill and stroke" aria-label="Swap fill and stroke"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></button>
+          <button class="ibtn" id="noneCol" title="No color for this part" aria-label="No color"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 17.5l11-11"/></svg></button>
+        </div>
+        <div class="sv" id="sv"><div class="knob" id="svKnob"></div></div>
+        <div class="huerow"><input type="range" class="hue" id="hue" min="0" max="360" aria-label="Hue"><span class="numwrap"><input type="number" class="num" id="hueNum" min="0" max="360" step="1" aria-label="Hue in degrees"><i>°</i></span></div>
+        <div class="hexrow">
+          <label>HEX<input id="hex" maxlength="7" spellcheck="false"></label>
+          <label>R<input id="cr" type="number" min="0" max="255"></label>
+          <label>G<input id="cg" type="number" min="0" max="255"></label>
+          <label>B<input id="cb" type="number" min="0" max="255"></label>
+          <button class="ibtn" id="eyedrop" title="Pick a color from a shape  I" aria-label="Pick color from a shape"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5l6 6-2.5 2.5-6-6z"/><path d="M13 7l-8.5 8.5V20H9l8.5-8.5"/></svg></button>
+        </div>
+        <div class="field"><div class="hd"><label>Brand palette</label><output id="colorOut"></output></div><div class="swatches" id="swatches"></div></div>
+        <div class="field"><div class="hd"><label>Harmonies</label><output>complement · analogous · triad</output></div><div class="rowsw" id="harm"></div></div>
+        <div class="field"><div class="hd"><label>Tints and shades</label></div><div class="rowsw" id="tints"></div></div>
+        <div class="field"><div class="hd"><label>Used in this logo</label></div><div class="rowsw" id="docCols"></div></div>
+        <div class="field"><div class="hd"><label>Recent</label></div><div class="rowsw" id="recent"></div></div>
+      </div>
+      <div class="grp">
+        <h3>Stroke and opacity</h3>
+        <div class="field"><div class="hd"><label for="strokeW">Stroke width</label><output data-for="strokeW"></output></div><input type="range" id="strokeW" data-key="strokeW" min="1" max="60"></div>
+        <div class="field"><div class="hd"><label for="opacity">Opacity</label><output data-for="opacity"></output></div><input type="range" id="opacity" data-key="opacity" min="10" max="100"></div>
+        <p class="desc">Changes apply to the selected shapes and to every new shape.</p>
+      </div>
+    </section>
+
+    <section class="pane" data-pane="trace" hidden>
+      <label class="drop" id="drop" for="file"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg><b>Add a photo of your sketch</b><span class="desc">Drop it here or click to choose. PNG or JPG.</span></label>
+      <input type="file" id="file" accept="image/*" hidden>
+      <div class="field"><div class="hd"><label for="traceOpacity">Image visibility</label><output data-for="traceOpacity"></output></div><input type="range" id="traceOpacity" data-key="traceOpacity" min="0" max="100"><p class="desc">Keep the image faint and sketch over it, or trace it automatically below.</p></div>
+      <div class="grp">
+        <h3>Auto-trace</h3>
+        <div class="field"><div class="hd"><label for="threshold">Ink threshold</label><output data-for="threshold"></output></div><input type="range" id="threshold" data-key="threshold" min="10" max="245"></div>
+        <div class="field"><div class="hd"><label for="detail">Simplify</label><output data-for="detail"></output></div><input type="range" id="detail" data-key="detail" min="0" max="100"></div>
+        <label class="sw"><span class="t"><b>Geometrize traced shapes</b><span class="desc">Run every traced outline through shape recognition and grading.</span></span><input type="checkbox" id="geometrize" data-key="geometrize"></label>
+        <label class="sw"><span class="t"><b>Light ink on dark paper</b></span><input type="checkbox" id="invert" data-key="invert"></label>
+        <button class="btn primary block" id="traceBtn" disabled>Trace to vectors</button>
+        <button class="btn block" id="removeImg" disabled>Remove image</button>
+      </div>
+    </section>
+
+    <section class="pane" data-pane="layers" hidden>
+      <div class="lyrbar">
+        <button class="btn" id="lyrGroup" title="Group selection  Ctrl G">Group</button>
+        <button class="btn" id="lyrUngroup" title="Ungroup  Ctrl Shift G">Ungroup</button>
+        <button class="btn" id="lyrDel" title="Delete selection  Del">Delete</button>
+      </div>
+      <ul class="layers" id="layers" aria-label="Layers"></ul>
+      <p class="desc">Top of the list is the front. Click to select, Shift-click to add. Drag a row to reorder it, or drop it onto the middle of a group to put it inside. Double-click a name to rename it.</p>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.18/paper-full.min.js"></script>
+<script>
+(function(){
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const cv = $('#cv'), stage = $('#stage');
+paper.setup(cv);
+const { Point, Path, Layer, Matrix, Rectangle, CompoundPath, Segment, Size, Group } = paper;
+const view = paper.view;
+const AB = 1000, MID = AB / 2, PHI = (1 + Math.sqrt(5)) / 2;
+const FIB = [8, 13, 21, 34, 55, 89, 144, 233, 377, 610];
+const PALETTE = ['#141b24', '#ffffff', '#2457e6', '#ff6a3d', '#16a571', '#e0457b', '#ffb020', '#7a4fe0', '#0fa3b1', '#8a94a3', '#5b2a1c', '#d7263d'];
+
+const SET_VER = 2;
+const DEF = { ver:SET_VER, tool:'sketch', mode:'organic', autoPerfect:true, perfect:60, corner:50, smooth:65, angle:15, radius:0, golden:true, shapesnap:true, symmetry:false,
+  grid:true, gridSize:25, showGrid:true, showSpiral:false, showCircles:false, fill:'#141b24', stroke:null, tgt:'fill', recent:[], strokeW:12, opacity:100,
+  traceOpacity:35, threshold:130, detail:40, geometrize:true, invert:false };
+const S = Object.assign({}, DEF);
+try { const sv = JSON.parse(localStorage.getItem('geomark.settings') || '{}'); Object.assign(S, sv);
+  if (sv.color && !('fill' in sv)){ S.fill = sv.fillMode === 'outline' ? null : sv.color; S.stroke = sv.fillMode === 'outline' ? sv.color : null; }
+  // older saved settings predate the organic default: move them onto it
+  if ((sv.ver || 0) < SET_VER){ S.mode = DEF.mode; S.smooth = DEF.smooth; S.autoPerfect = true; } } catch (e) {}
+delete S.color; delete S.fillMode; S.ver = SET_VER;
+S.tool = 'sketch';
+const INK = '#141b24';
+function saveSettings(){ try { localStorage.setItem('geomark.settings', JSON.stringify(S)); } catch (e) {} }
+
+/* ---------- layers ---------- */
+const guideL = paper.project.activeLayer;
+const board = new Path.Rectangle({ rectangle: new Rectangle(0, 0, AB, AB), fillColor: '#ffffff',
+  shadowColor: new paper.Color(0, 0, 0, 0.12), shadowBlur: 36, shadowOffset: new Point(0, 8) });
+const traceG = new Group(); const guideG = new Group();
+let mainL = new Layer(); const fxL = new Layer(); const uiL = new Layer();
+mainL.activate();
+
+/* ---------- small helpers ---------- */
+const P = (x, y) => new Point(x, y);
+const xy = p => [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100];
+const pt = a => new Point(a[0], a[1]);
+const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+const dir = d => P(Math.cos(rad(d)), Math.sin(rad(d)));
+const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+const cvar = a => { const m = mean(a); return Math.sqrt(mean(a.map(v => (v - m) ** 2))) / (Math.abs(m) || 1); };
+function plen(pts){ let s = 0; for (let i = 1; i < pts.length; i++) s += pts[i].getDistance(pts[i - 1]); return s; }
+function bboxOf(pts){ let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const p of pts){ x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); } return new Rectangle(x0, y0, Math.max(x1 - x0, 1e-6), Math.max(y1 - y0, 1e-6)); }
+function segDist(p, a, b){ const dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy; let t = l ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / l : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy); }
+function rdp(pts, eps){
+  if (pts.length < 3) return pts.slice();
+  let md = 0, idx = 0; const a = pts[0], b = pts[pts.length - 1];
+  for (let i = 1; i < pts.length - 1; i++){ const d = segDist(pts[i], a, b); if (d > md){ md = d; idx = i; } }
+  if (md > eps){ const l = rdp(pts.slice(0, idx + 1), eps), r = rdp(pts.slice(idx), eps); return l.slice(0, -1).concat(r); }
+  return [a, b];
+}
+function rdpClosed(pts, eps){
+  let k = 0, md = 0; for (let i = 1; i < pts.length; i++){ const d = pts[i].getDistance(pts[0]); if (d > md){ md = d; k = i; } }
+  const a = rdp(pts.slice(0, k + 1), eps), b = rdp(pts.slice(k).concat([pts[0]]), eps);
+  return a.slice(0, -1).concat(b.slice(0, -1));
+}
+function resample(pts, n, closed){
+  const src = closed ? pts.concat([pts[0]]) : pts; const L = plen(src); if (!L) return pts.slice();
+  const step = L / (closed ? n : n - 1); const out = [src[0]]; let acc = 0;
+  for (let i = 1; i < src.length && out.length < n; i++){
+    let a = src[i - 1]; const b = src[i]; let d = a.getDistance(b);
+    while (acc + d >= step && out.length < n){ const t = (step - acc) / d; const q = a.add(b.subtract(a).multiply(t)); out.push(q); a = q; d = a.getDistance(b); acc = 0; }
+    acc += d;
+  }
+  while (out.length < n) out.push(src[src.length - 1]);
+  return out;
+}
+function interior(v, a, b){ const u = a.subtract(v), w = b.subtract(v); const c = (u.x * w.x + u.y * w.y) / ((u.length * w.length) || 1); return deg(Math.acos(Math.max(-1, Math.min(1, c)))); }
+function cleanVerts(v, diag){
+  v = v.slice(); let changed = true;
+  while (changed && v.length > 3){
+    changed = false; const n = v.length;
+    for (let i = 0; i < n; i++){
+      const a = v[(i - 1 + n) % n], b = v[(i + 1) % n];
+      if (v[i].getDistance(b) < 0.07 * diag){ v[i] = v[i].add(b).divide(2); v.splice((i + 1) % n, 1); changed = true; break; }
+      if (interior(v[i], a, b) > 160){ v.splice(i, 1); changed = true; break; }
+    }
+  }
+  return v;
+}
+function fitErr(pts, v, closed){
+  const segs = []; for (let i = 0; i < v.length - (closed ? 0 : 1); i++) segs.push([v[i], v[(i + 1) % v.length]]);
+  return mean(pts.map(p => Math.min(...segs.map(s => segDist(p, s[0], s[1])))));
+}
+function fitEllipse(rs){
+  const cx = mean(rs.map(p => p.x)), cy = mean(rs.map(p => p.y));
+  let sxx = 0, syy = 0, sxy = 0; for (const p of rs){ const dx = p.x - cx, dy = p.y - cy; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; }
+  sxx /= rs.length; syy /= rs.length; sxy /= rs.length;
+  const th = 0.5 * Math.atan2(2 * sxy, sxx - syy), c = Math.cos(th), s = Math.sin(th);
+  let suu = 0, svv = 0; const uv = rs.map(p => { const dx = p.x - cx, dy = p.y - cy; const u = dx * c + dy * s, w = -dx * s + dy * c; suu += u * u; svv += w * w; return [u, w]; });
+  const rx = Math.sqrt(2 * suu / rs.length), ry = Math.sqrt(2 * svv / rs.length);
+  const err = mean(uv.map(([u, w]) => Math.abs(Math.sqrt((u / rx) ** 2 + (w / ry) ** 2) - 1)));
+  return { c: P(cx, cy), rx, ry, rot: deg(th), err };
+}
+function fitCircle(pts){
+  let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, sxz = 0, syz = 0, sz = 0; const n = pts.length;
+  for (const p of pts){ const z = p.x * p.x + p.y * p.y; sx += p.x; sy += p.y; sxx += p.x * p.x; syy += p.y * p.y; sxy += p.x * p.y; sxz += p.x * z; syz += p.y * z; sz += z; }
+  const A = [[sxx, sxy, sx], [sxy, syy, sy], [sx, sy, n]], B = [-sxz, -syz, -sz];
+  const det = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  const D = det(A); if (Math.abs(D) < 1e-9) return null;
+  const sol = [0, 1, 2].map(k => det(A.map((row, i) => row.map((v, j) => j === k ? B[i] : v))) / D);
+  const c = P(-sol[0] / 2, -sol[1] / 2), r = Math.sqrt(Math.max(0, c.x * c.x + c.y * c.y - sol[2]));
+  if (!isFinite(r) || r <= 0) return null;
+  const err = mean(pts.map(p => Math.abs(p.getDistance(c) - r))) / r;
+  let sweep = 0; for (let i = 1; i < n; i++){ let d = deg(Math.atan2(pts[i].y - c.y, pts[i].x - c.x) - Math.atan2(pts[i - 1].y - c.y, pts[i - 1].x - c.x)); while (d > 180) d -= 360; while (d < -180) d += 360; sweep += d; }
+  return { c, r, err, sweep, a0: deg(Math.atan2(pts[0].y - c.y, pts[0].x - c.x)) };
+}
+
+/* ---------- snapping ("grading") ---------- */
+let EXCL = new Set();
+function snapTh(){ return 12 / view.zoom; }
+// every drawable shape (groups are walked into); editable skips locked items
+function allShapes(opts){
+  const o = opts || {}, out = [];
+  const walk = it => { if (!o.hidden && !it.visible) return; if (o.editable && it.locked) return;
+    if (it.className === 'Group') it.children.forEach(walk); else out.push(it); };
+  mainL.children.forEach(walk); return out;
+}
+// the shape a hit belongs to: stops at groups so it never returns a group
+function shapeOf(it){ while (it && it.parent && it.parent !== mainL && it.parent.className !== 'Group') it = it.parent; return it; }
+const isGroup = it => it && it.className === 'Group';
+function stackPath(it){ const a = []; while (it && it !== mainL){ a.unshift(it.index); it = it.parent; } return a; }
+function byStack(a, b){ const x = stackPath(a), y = stackPath(b); for (let i = 0; i < Math.min(x.length, y.length); i++) if (x[i] !== y[i]) return x[i] - y[i]; return x.length - y.length; }
+function targets(){
+  const t = [{ p: P(MID, MID) }];
+  for (const it of allShapes()){ if (EXCL.has(it)) continue; const d = it.data || {};
+    if (d.c) t.push({ p: pt(d.c) });
+    if (d.pts && d.kind !== 'curve' && d.kind !== 'rough') d.pts.forEach(q => t.push({ p: pt(q) })); }
+  return t;
+}
+function snapPoint(p){
+  const th = snapTh();
+  if (S.shapesnap){ let best = null, bd = th; for (const t of targets()){ const d = t.p.getDistance(p); if (d < bd){ bd = d; best = t.p; } } if (best) return best.clone(); }
+  let q = p.clone();
+  if (S.symmetry && Math.abs(q.x - MID) < th) q.x = MID;
+  if (S.grid){ const g = S.gridSize; q = P(Math.round(q.x / g) * g, Math.round(q.y / g) * g); if (S.symmetry && Math.abs(p.x - MID) < th) q.x = MID; }
+  return q;
+}
+function snapLen(r){
+  const cands = [];
+  if (S.golden) cands.push(...FIB);
+  if (S.shapesnap) for (const it of allShapes()){ if (!EXCL.has(it) && it.data && it.data.r) cands.push(it.data.r); }
+  let best = null, bd = 0.11;
+  for (const c of cands){ const d = Math.abs(c - r) / c; if (d < bd){ bd = d; best = c; } }
+  if (best) return { v: best, golden: FIB.includes(best) };
+  return { v: Math.round(r), golden: false };
+}
+function snapAng(a){ return S.angle > 0 ? Math.round(a / S.angle) * S.angle : a; }
+function cornerEps(){ return 0.13 - 0.10 * S.corner / 100; }
+function smoothTol(){ return 1 + S.smooth / 100 * 22; }
+
+/* ---------- recognition ---------- */
+const NAMES = { 3: 'Triangle', 4: 'Quad', 5: 'Pentagon', 6: 'Hexagon', 7: 'Heptagon', 8: 'Octagon' };
+function regularPts(n, c, R, rot){ const out = []; for (let i = 0; i < n; i++) out.push(c.add(dir(rot + i * 360 / n).multiply(R))); return out; }
+function uprightRot(raw, period){
+  const opts = [-90, -90 + period / 2]; let best = opts[0], bd = 1e9;
+  for (const o of opts){ let d = ((raw - o) % period + period) % period; d = Math.min(d, period - d); if (d < bd){ bd = d; best = o; } }
+  return best;
+}
+function recognize(raw, forceClosed){
+  let pts = []; for (const p of raw){ if (!pts.length || p.getDistance(pts[pts.length - 1]) > 0.5) pts.push(p); }
+  if (pts.length < 2) return null;
+  const L = plen(pts); if (L < 4) return null;
+  const bb = bboxOf(pts), diag = Math.hypot(bb.width, bb.height);
+  const gap = pts[0].getDistance(pts[pts.length - 1]);
+  const perf = S.perfect / 100;
+  const closed = forceClosed || (L > 30 && gap < 0.22 * L && gap < 0.4 * diag);
+
+  if (!closed){
+    if (gap / L > 0.95 - 0.03 * perf){
+      let a = snapPoint(pts[0]), b = snapPoint(pts[pts.length - 1]);
+      const ang = snapAng(deg(Math.atan2(b.y - a.y, b.x - a.x)));
+      if (S.angle) b = a.add(dir(ang).multiply(a.getDistance(b)));
+      return { kind: 'line', pts: [a, b], closed: false, label: 'Line', detail: (() => { let t = ((-ang % 180) + 180) % 180; if (t > 90) t -= 180; return Math.round(t) + '° · ' + Math.round(a.getDistance(b)) + ' long'; })() };
+    }
+    const cf = fitCircle(resample(pts, 48, false));
+    if (cf && cf.err < 0.035 + 0.04 * perf && Math.abs(cf.sweep) > 30){
+      if (Math.abs(cf.sweep) > 340) return circleShape(cf.c, cf.r);
+      const c = snapPoint(cf.c), r = snapLen(cf.r);
+      const a0 = snapAng(cf.a0), a1 = a0 + snapAng(cf.sweep);
+      return { kind: 'arc', c, r: r.v, a0, a1, closed: false, label: 'Arc', detail: 'r ' + r.v + ' · ' + Math.round(Math.abs(a1 - a0)) + '°' };
+    }
+    const v = rdp(pts, cornerEps() * diag);
+    const sharp = v.slice(1, -1).some((q, i) => interior(q, v[i], v[i + 2]) < 150);
+    if (v.length >= 3 && v.length <= 6 && sharp && fitErr(pts, v, false) < 0.02 * diag){
+      const out = [snapPoint(v[0])];
+      for (let i = 1; i < v.length; i++){ const len = v[i].getDistance(v[i - 1]); const a = snapAng(deg(Math.atan2(v[i].y - v[i - 1].y, v[i].x - v[i - 1].x))); out.push(S.angle ? out[i - 1].add(dir(a).multiply(len)) : snapPoint(v[i])); }
+      return { kind: 'polyline', pts: out, closed: false, label: 'Polyline', detail: (out.length - 1) + ' segments' };
+    }
+    return { kind: 'curve', pts, closed: false, label: 'Smooth curve' };
+  }
+
+  // closed shapes
+  if (pts.length > 3 && pts[0].getDistance(pts[pts.length - 1]) < 0.05 * L) pts.pop();
+  const rs = resample(pts, 80, true);
+  const el = fitEllipse(rs);
+  let v = cleanVerts(rdpClosed(rs, cornerEps() * diag), diag);
+  const pErr = v.length >= 3 ? fitErr(rs, v, true) / diag : 1;
+  const maxInt = v.length >= 3 ? Math.max(...v.map((q, i) => interior(q, v[(i - 1 + v.length) % v.length], v[(i + 1) % v.length]))) : 180;
+  // pentagram drawn in one stroke
+  if (v.length === 5){ let turn = 0; for (let i = 0; i < 5; i++){ const a = v[i], b = v[(i + 1) % 5], c = v[(i + 2) % 5]; let d = deg(Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(b.y - a.y, b.x - a.x)); while (d > 180) d -= 360; while (d < -180) d += 360; turn += d; }
+    if (Math.abs(turn) > 540) return starShape(5, mean(v.map(q => q.x)), mean(v.map(q => q.y)), v, 0.382); }
+  if (v.length >= 3 && v.length <= 6 && pErr < 0.022 && maxInt < 150) return gradePoly(v, diag, perf);
+  if (v.length >= 8 && v.length % 2 === 0){ const s = tryStar(v, perf); if (s) return s; }
+  const ellTol = 0.05 + 0.09 * perf;
+  if (el.err < ellTol) return ellipseShape(el, perf);
+  if (v.length >= 3 && v.length <= 12 && pErr < 0.04) return gradePoly(v, diag, perf);
+  return { kind: 'curve', pts, closed: true, label: 'Organic shape' };
+}
+// organic mode: keep the stroke's own form, closed into a blob when the ends meet
+function organicShape(raw){
+  let pts = []; for (const p of raw){ if (!pts.length || p.getDistance(pts[pts.length - 1]) > 0.5) pts.push(p); }
+  if (pts.length < 2) return null;
+  const L = plen(pts); if (L < 4) return null;
+  const bb = bboxOf(pts), diag = Math.hypot(bb.width, bb.height), gap = pts[0].getDistance(pts[pts.length - 1]);
+  const closed = L > 30 && gap < 0.22 * L && gap < 0.4 * diag;
+  if (closed && pts.length > 3 && gap < 0.05 * L) pts.pop();
+  return { kind: 'curve', pts, closed, label: closed ? 'Organic shape' : 'Organic curve', detail: 'Enter makes it geometric' };
+}
+function circleShape(c0, r0){
+  const c = snapPoint(c0), r = snapLen(r0);
+  return { kind: 'circle', c, r: r.v, closed: true, label: 'Circle', detail: 'r ' + r.v + (r.golden ? ' · Fibonacci' : '') };
+}
+function ellipseShape(el, perf){
+  const ratio = Math.min(el.rx, el.ry) / Math.max(el.rx, el.ry);
+  if (ratio > 0.86 - 0.12 * perf) return circleShape(el.c, (el.rx + el.ry) / 2);
+  const c = snapPoint(el.c);
+  let rot = el.rot, rx = el.rx, ry = el.ry;
+  if (ry > rx){ [rx, ry] = [ry, rx]; rot += 90; }
+  rot = S.angle ? snapAng(rot) : rot;
+  const R = snapLen(rx); rx = R.v;
+  let note = '';
+  if (S.golden && Math.abs(rx / ry - PHI) / PHI < 0.12){ ry = Math.round(rx / PHI * 10) / 10; note = ' · golden 1 : 1.618'; }
+  else ry = snapLen(ry).v;
+  return { kind: 'ellipse', c, rx, ry, rot, closed: true, label: 'Ellipse', detail: Math.round(rx * 2) + ' × ' + Math.round(ry * 2) + note };
+}
+function tryStar(v, perf){
+  const cx = mean(v.map(q => q.x)), cy = mean(v.map(q => q.y)), c = P(cx, cy);
+  const r = v.map(q => q.getDistance(c)); const ev = r.filter((_, i) => i % 2 === 0), od = r.filter((_, i) => i % 2 === 1);
+  const outerEven = mean(ev) > mean(od); const ro = outerEven ? ev : od, ri = outerEven ? od : ev;
+  const ratio = mean(ri) / mean(ro), tol = 0.2 + 0.15 * perf;
+  if (ratio < 0.78 && cvar(ro) < tol && cvar(ri) < tol) return starShape(v.length / 2, cx, cy, v.filter((_, i) => (i % 2 === 0) === outerEven), ratio);
+  return null;
+}
+function starShape(k, cx, cy, outer, ratio){
+  const c = snapPoint(P(cx, cy)); const R = snapLen(mean(outer.map(q => q.getDistance(P(cx, cy)))));
+  if (S.golden && k === 5 && Math.abs(ratio - 0.382) < 0.15) ratio = 0.382; else ratio = Math.round(ratio * 20) / 20;
+  const rot = uprightRot(deg(Math.atan2(outer[0].y - cy, outer[0].x - cx)), 360 / k);
+  const pts = []; for (let i = 0; i < 2 * k; i++) pts.push(c.add(dir(rot + i * 180 / k).multiply(i % 2 ? R.v * ratio : R.v)));
+  return { kind: 'poly', pts, closed: true, label: k + '-point star', detail: 'R ' + R.v + ' · inner ' + ratio };
+}
+function gradePoly(v, diag, perf){
+  const n = v.length, tol = 0.1 + 0.15 * perf;
+  const c0 = P(mean(v.map(q => q.x)), mean(v.map(q => q.y)));
+  const sides = v.map((q, i) => q.getDistance(v[(i + 1) % n]));
+  const ints = v.map((q, i) => interior(q, v[(i - 1 + n) % n], v[(i + 1) % n]));
+  // rectangles
+  if (n === 4 && ints.every(a => Math.abs(a - 90) < 12 + 14 * perf)){
+    let th = deg(Math.atan2(v[1].y - v[0].y, v[1].x - v[0].x));
+    th = ((th % 90) + 90) % 90; if (th > 45) th -= 90;
+    th = S.angle ? snapAng(th) : (Math.abs(th) < 6 ? 0 : th);
+    const u = dir(th), w = dir(th + 90);
+    const us = v.map(q => q.subtract(c0).dot(u)), ws = v.map(q => q.subtract(c0).dot(w));
+    let W = Math.max(...us) - Math.min(...us), H = Math.max(...ws) - Math.min(...ws);
+    const c = snapPoint(c0.add(u.multiply((Math.max(...us) + Math.min(...us)) / 2)).add(w.multiply((Math.max(...ws) + Math.min(...ws)) / 2)));
+    let label = 'Rectangle', detail;
+    if (Math.abs(W - H) / Math.max(W, H) < 0.1 + 0.1 * perf){ const s = snapLen((W + H) / 2).v; W = H = s; label = th % 90 === 0 ? 'Square' : 'Diamond'; detail = s + ' × ' + s; }
+    else {
+      const big = Math.max(W, H), sm = Math.min(W, H); let B = snapLen(big / 2).v * 2, Sm;
+      if (S.golden && Math.abs(big / sm - PHI) / PHI < 0.1){ Sm = Math.round(B / PHI * 10) / 10; label = 'Golden rectangle'; }
+      else Sm = snapLen(sm / 2).v * 2;
+      if (W >= H){ W = B; H = Sm; } else { H = B; W = Sm; }
+      detail = Math.round(W) + ' × ' + Math.round(H);
+    }
+    const pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => c.add(u.multiply(a * W / 2)).add(w.multiply(b * H / 2)));
+    return { kind: 'poly', pts, closed: true, label, detail };
+  }
+  // regular polygons
+  const R0 = v.map(q => q.getDistance(c0));
+  if (cvar(sides) < tol && cvar(R0) < tol * 0.8){
+    const c = snapPoint(c0), R = snapLen(mean(R0));
+    const rot = uprightRot(deg(Math.atan2(v[0].y - c0.y, v[0].x - c0.x)), 360 / n);
+    const name = n === 3 ? 'Equilateral triangle' : n === 4 ? 'Square' : 'Regular ' + (NAMES[n] || n + '-gon').toLowerCase();
+    return { kind: 'poly', pts: regularPts(n, c, R.v, rot), closed: true, label: name, detail: 'R ' + R.v + (R.golden ? ' · Fibonacci' : '') };
+  }
+  // isosceles triangle
+  if (n === 3){
+    for (let i = 0; i < 3; i++){
+      const ap = v[i], b1 = v[(i + 2) % 3], b2 = v[(i + 1) % 3];
+      const a = ap.getDistance(b1), b = ap.getDistance(b2);
+      if (Math.abs(a - b) / Math.max(a, b) < tol){
+        const m = b1.add(b2).divide(2); let ang = deg(Math.atan2(ap.y - m.y, ap.x - m.x)); ang = S.angle ? snapAng(ang) : ang;
+        const h = ap.getDistance(m), half = b1.getDistance(b2) / 2;
+        const mm = snapPoint(m), apex = mm.add(dir(ang).multiply(h)), perp = dir(ang + 90).multiply(half);
+        return { kind: 'poly', pts: [apex, mm.add(perp), mm.subtract(perp)], closed: true, label: 'Isosceles triangle', detail: Math.round(half * 2) + ' base · ' + Math.round(h) + ' high' };
+      }
+    }
+  }
+  // generic polygon: snap vertices, straighten near-axis edges
+  let pts = v.map(q => snapPoint(q));
+  if (S.angle){ for (let i = 0; i < n; i++){ const a = pts[i], b = pts[(i + 1) % n]; const ang = Math.abs(deg(Math.atan2(b.y - a.y, b.x - a.x))) % 180;
+    if (ang < 7 || ang > 173){ const y = (a.y + b.y) / 2; pts[i] = P(a.x, y); pts[(i + 1) % n] = P(b.x, y); }
+    else if (Math.abs(ang - 90) < 7){ const x = (a.x + b.x) / 2; pts[i] = P(x, a.y); pts[(i + 1) % n] = P(x, b.y); } } }
+  return { kind: 'poly', pts, closed: true, label: n === 4 ? 'Quadrilateral' : (NAMES[n] || 'Polygon'), detail: n + ' corners' };
+}
+
+/* ---------- building paper items ---------- */
+function polyPath(pts, r){
+  const p = new Path({ closed: true }); const n = pts.length; const V = pts.map(pt);
+  if (!r){ V.forEach(q => p.add(q)); return p; }
+  for (let i = 0; i < n; i++){
+    const v = V[i], a = V[(i - 1 + n) % n], b = V[(i + 1) % n];
+    const ang = rad(interior(v, a, b)); if (ang > 3.1){ p.add(v); continue; }
+    const d = Math.min(r / Math.tan(ang / 2), v.getDistance(a) / 2, v.getDistance(b) / 2);
+    const Rr = d * Math.tan(ang / 2), turn = Math.PI - ang, h = 4 / 3 * Math.tan(turn / 4) * Rr;
+    const p1 = v.add(a.subtract(v).normalize(d)), p2 = v.add(b.subtract(v).normalize(d));
+    p.add(new Segment(p1, null, v.subtract(p1).normalize(h)));
+    p.add(new Segment(p2, v.subtract(p2).normalize(h), null));
+  }
+  return p;
+}
+function styleItem(it, closed){
+  it.strokeCap = 'round'; it.strokeJoin = 'round';
+  if (closed){ it.fillColor = S.fill; it.strokeColor = S.stroke; if (!S.fill && !S.stroke) it.fillColor = INK; if (S.stroke) it.strokeWidth = S.strokeW; }
+  else { it.fillColor = null; it.strokeColor = S.stroke || S.fill || INK; it.strokeWidth = S.strokeW; }
+  it.opacity = S.opacity / 100;
+}
+function build(sh){
+  let it; const d = { kind: sh.kind, label: sh.label, detail: sh.detail || '' };
+  if (sh.kind === 'circle'){ it = new Path.Circle({ center: sh.c, radius: sh.r }); d.c = xy(sh.c); d.r = sh.r; }
+  else if (sh.kind === 'ellipse'){ it = new Path.Ellipse({ center: sh.c, radius: [sh.rx, sh.ry] }); it.rotate(sh.rot, sh.c); d.c = xy(sh.c); }
+  else if (sh.kind === 'poly'){ d.pts = sh.pts.map(xy); d.c = xy(P(mean(sh.pts.map(q => q.x)), mean(sh.pts.map(q => q.y)))); d.rad = S.radius; it = polyPath(d.pts, S.radius); }
+  else if (sh.kind === 'line' || sh.kind === 'polyline'){ it = new Path({ segments: sh.pts }); d.pts = sh.pts.map(xy); }
+  else if (sh.kind === 'arc'){ const f = sh.c.add(dir(sh.a0).multiply(sh.r)), t = sh.c.add(dir(sh.a1).multiply(sh.r)), th = sh.c.add(dir((sh.a0 + sh.a1) / 2).multiply(sh.r));
+    it = new Path.Arc({ from: f, through: th, to: t }); d.c = xy(sh.c); d.r = sh.r; }
+  else { it = new Path({ segments: sh.pts, closed: sh.closed }); it.simplify(smoothTol()); }
+  it.data = d; styleItem(it, sh.closed); return it;
+}
+function roughItem(pts){
+  const it = new Path({ segments: pts }); it.simplify(1.2);
+  it.strokeColor = S.stroke || S.fill || INK; it.strokeWidth = Math.max(3, S.strokeW * 0.5); it.strokeCap = 'round'; it.strokeJoin = 'round'; it.opacity = S.opacity / 100;
+  it.data = { kind: 'rough', label: 'Rough sketch', detail: 'press Perfect', raw: pts.map(xy) };
+  return it;
+}
+function transformItem(it, m){ it.transform(m); transformData(it, m); }
+function transformData(it, m){
+  const d = it.data;
+  if (d){
+    if (d.pts) d.pts = d.pts.map(q => xy(m.transform(pt(q))));
+    if (d.raw) d.raw = d.raw.map(q => xy(m.transform(pt(q))));
+    if (d.c) d.c = xy(m.transform(pt(d.c)));
+    if (d.r) d.r = Math.round(d.r * Math.abs(m.scaling.x) * 100) / 100;
+  }
+  if (isGroup(it)) it.children.forEach(c => transformData(c, m));
+}
+function copyData(a, b){ b.data = JSON.parse(JSON.stringify(a.data || {})); if (isGroup(a)) a.children.forEach((c, i) => b.children[i] && copyData(c, b.children[i])); }
+function cloneItem(it){ const k = it.clone(); copyData(it, k); return k; }
+function mirrorClone(it){
+  const c = cloneItem(it);
+  transformItem(c, new Matrix().scale(-1, 1, P(MID, 0))); return c;
+}
+const normA = a => Math.round((((a + 180) % 360 + 360) % 360 - 180) * 10) / 10;
+function addRot(it, d){ it.data.rot = normA((it.data.rot || 0) + d); }
+
+/* ---------- history & persistence ---------- */
+let hist = [], hi = -1;
+function commit(){
+  hist = hist.slice(0, hi + 1); hist.push(mainL.exportJSON()); if (hist.length > 100) hist.shift(); hi = hist.length - 1;
+  try { localStorage.setItem('geomark.doc', hist[hi]); } catch (e) {}
+  updateChrome(); renderLayers();
+}
+function restore(json){
+  mainL.removeChildren();
+  const tmp = paper.Base.importJSON(json);
+  if (tmp && tmp !== mainL && tmp.children){ mainL.addChildren(tmp.removeChildren()); tmp.remove(); }
+  mainL.activate();
+  editTarget = null; ptSel = []; edgeSel = null; ptBase = null;
+  sel = []; refreshUI(); updateChrome(); syncPicker(false); renderLayers();
+}
+function undo(){ if (hi > 0){ hi--; restore(hist[hi]); try { localStorage.setItem('geomark.doc', hist[hi]); } catch (e) {} } }
+function redo(){ if (hi < hist.length - 1){ hi++; restore(hist[hi]); try { localStorage.setItem('geomark.doc', hist[hi]); } catch (e) {} } }
+
+/* ---------- guides ---------- */
+function drawGuides(){
+  guideG.removeChildren();
+  const add = it => { it.strokeScaling = false; guideG.addChild(it); return it; };
+  const line = (a, b, color, w, dash) => add(new Path.Line({ from: a, to: b, strokeColor: color, strokeWidth: w || 1, dashArray: dash || null, insert: false }));
+  if (S.showGrid){ const g = S.gridSize;
+    for (let x = 0; x <= AB + 0.01; x += g){ const major = Math.round(x / g) % 4 === 0; line([x, 0], [x, AB], major ? '#d2d9e2' : '#eaeef3'); }
+    for (let y = 0; y <= AB + 0.01; y += g){ const major = Math.round(y / g) % 4 === 0; line([0, y], [AB, y], major ? '#d2d9e2' : '#eaeef3'); } }
+  if (S.showCircles){ for (const r of FIB.slice(2, 9)) add(new Path.Circle({ center: [MID, MID], radius: r, strokeColor: 'rgba(36,87,230,0.35)', strokeWidth: 1, insert: false })); }
+  if (S.showSpiral){
+    const col = 'rgba(224,69,123,0.55)'; let w = 900, h = 900 / PHI, x = 50, y = (AB - h) / 2;
+    add(new Path.Rectangle({ rectangle: [x, y, w, h], strokeColor: col, strokeWidth: 1, insert: false }));
+    for (let i = 0; i < 10; i++){
+      const k = i % 4; let sq, from, ctr, to, s;
+      if (k === 0){ s = h; sq = [x, y, s, s]; from = P(x, y + s); ctr = P(x + s, y + s); to = P(x + s, y); x += s; w -= s; }
+      else if (k === 1){ s = w; sq = [x, y, s, s]; from = P(x, y); ctr = P(x, y + s); to = P(x + s, y + s); y += s; h -= s; }
+      else if (k === 2){ s = h; sq = [x + w - s, y, s, s]; from = P(x + w, y); ctr = P(x + w - s, y); to = P(x + w - s, y + s); w -= s; }
+      else { s = w; sq = [x, y + h - s, s, s]; from = P(x + w, y + h); ctr = P(x + w, y + h - s); to = P(x, y + h - s); h -= s; }
+      add(new Path.Rectangle({ rectangle: sq, strokeColor: col, strokeWidth: 1, insert: false }));
+      const through = ctr.add(from.subtract(ctr).add(to.subtract(ctr)).normalize(s));
+      add(new Path.Arc({ from, through, to, strokeColor: col, strokeWidth: 1.6, insert: false }));
+    }
+  }
+  if (S.symmetry) line([MID, -40], [MID, AB + 40], '#e0457b', 1.2, [6, 5]);
+}
+
+/* ---------- selection UI ---------- */
+let sel = [];
+function topItem(it){ while (it && it.parent !== mainL) it = it.parent; return it; }
+function selBounds(){ let b = null; for (const it of sel){ b = b ? b.unite(it.strokeBounds) : it.strokeBounds.clone(); } return b; }
+let selRotVal = 0;
+function curRot(){ return sel.length === 1 ? normA(sel[0].data.rot || 0) : selRotVal; }
+function rotateSelTo(a){
+  if (!sel.length || !isFinite(a)) return; const d = a - curRot(); if (!d) return;
+  const m = new Matrix().rotate(d, selBounds().center);
+  sel.forEach(it => { transformItem(it, m); addRot(it, d); });
+  if (sel.length !== 1) selRotVal = normA(a);
+  refreshUI();
+}
+function setSel(a){
+  sel = a.filter(Boolean); selRotVal = 0;
+  if (sel.length === 1 && !isGroup(sel[0])){ const it = sel[0]; if (isClosed(it)){ S.fill = itemHex(it.fillColor); S.stroke = itemHex(it.strokeColor); } else S.stroke = itemHex(it.strokeColor); if (!S.fill && !S.stroke) S.fill = INK; syncPicker(); }
+  refreshUI(); renderLayers();
+}
+function refreshUI(){
+  uiL.removeChildren();
+  const bar = $('#selbar');
+  if (editTarget && !editTarget.parent) editTarget = null;
+  if (S.tool === 'points'){ bar.hidden = true; drawPointsUI(); updatePtBar(); return; }
+  $('#ptbar').hidden = true;
+  if (!sel.length){ bar.hidden = true; return; }
+  const z = view.zoom, blue = '#2457e6';
+  for (const it of sel){ const r = new Path.Rectangle({ rectangle: it.strokeBounds, strokeColor: 'rgba(36,87,230,0.45)', strokeWidth: 1 / z, insert: false }); uiL.addChild(r); }
+  const b = selBounds().expand(8 / z);
+  uiL.addChild(new Path.Rectangle({ rectangle: b, strokeColor: blue, strokeWidth: 1.5 / z, dashArray: [5 / z, 4 / z], insert: false }));
+  const hs = 10 / z;
+  [['nw', b.topLeft], ['ne', b.topRight], ['se', b.bottomRight], ['sw', b.bottomLeft]].forEach(([k, p]) => {
+    const h = new Path.Rectangle({ point: p.subtract(hs / 2), size: [hs, hs], fillColor: '#fff', strokeColor: blue, strokeWidth: 1.5 / z, insert: false }); h.data = { handle: k }; uiL.addChild(h); });
+  const rp = b.topCenter.subtract(P(0, 28 / z));
+  uiL.addChild(new Path.Line({ from: b.topCenter, to: rp, strokeColor: blue, strokeWidth: 1.2 / z, insert: false }));
+  const rh = new Path.Circle({ center: rp, radius: 6.5 / z, fillColor: '#fff', strokeColor: blue, strokeWidth: 1.5 / z, insert: false }); rh.data = { handle: 'rot' }; uiL.addChild(rh);
+  bar.hidden = false;
+  const lbl = $('#selLbl');
+  if (sel.length === 1){ const it = sel[0], d = it.data || {}; lbl.innerHTML = ''; lbl.append(d.name || (isGroup(it) ? 'Group' : d.label || 'Shape')); const s = document.createElement('small');
+    s.textContent = isGroup(it) ? it.children.length + ' items' : d.detail || Math.round(it.bounds.width) + ' × ' + Math.round(it.bounds.height); lbl.append(s); }
+  else { lbl.innerHTML = ''; lbl.append(sel.length + ' shapes'); const s = document.createElement('small'); s.textContent = 'ready to combine'; lbl.append(s); }
+  $$('.sb[data-multi]').forEach(btn => btn.disabled = sel.length < 2);
+  $$('.sb[data-single]').forEach(btn => btn.disabled = sel.length !== 1 || isGroup(sel[0]));
+  $$('.sb[data-ungroup]').forEach(btn => btn.disabled = !sel.some(isGroup));
+  const r = curRot(); $('#selRot').value = r; if (document.activeElement !== $('#selRotNum')) $('#selRotNum').value = r;
+}
+
+/* ---------- point editing ---------- */
+let editTarget = null, ptSel = [], edgeSel = null, UIREF = [], ptBase = null, lastEdge = null;
+function editPaths(){ if (!editTarget) return []; return editTarget.className === 'CompoundPath' ? editTarget.children.slice() : [editTarget]; }
+function setEditTarget(it){ editTarget = it || null; ptSel = []; edgeSel = null; sel = it ? [it] : []; refreshUI(); }
+function markEdited(){
+  if (!editTarget) return; const d = editTarget.data || {};
+  if (['circle', 'ellipse', 'poly', 'line', 'polyline', 'arc'].includes(d.kind)) editTarget.data = { kind: 'path', label: 'Edited ' + (d.label || 'shape').toLowerCase(), detail: 'custom points' };
+}
+function isSmooth(s){ return !s.handleIn.isZero() || !s.handleOut.isZero(); }
+function edgeSegs(){ return edgeSel && edgeSel.path && edgeSel.next ? [edgeSel, edgeSel.next] : []; }
+function workSegs(){ ptSel = ptSel.filter(s => s.path); return ptSel.length ? ptSel : edgeSegs(); }
+function drawPointsUI(){
+  const z = view.zoom, blue = '#2457e6'; UIREF = [];
+  const reg = (item, ref) => { item.data = { ui: UIREF.length }; UIREF.push(ref); uiL.addChild(item); };
+  for (const p of editPaths()){ const o = p.clone({ insert: false }); o.data = {}; o.fillColor = null; o.strokeColor = blue; o.strokeWidth = 1.25 / z; o.opacity = 1; o.dashArray = null; o.shadowColor = null; uiL.addChild(o); }
+  if (edgeSegs().length){ const [a, b] = edgeSegs(); const e = new Path({ segments: [new Segment(a.point, null, a.handleOut), new Segment(b.point, b.handleIn, null)], strokeColor: '#e0457b', strokeWidth: 4 / z, strokeCap: 'round', insert: false }); uiL.addChild(e); }
+  const showH = new Set(workSegs().concat(edgeSegs()));
+  for (const s of showH){
+    for (const which of ['handleIn', 'handleOut']){
+      const h = s[which]; if (h.isZero()) continue; const hp = s.point.add(h);
+      uiL.addChild(new Path.Line({ from: s.point, to: hp, strokeColor: blue, strokeWidth: 1 / z, insert: false }));
+      reg(new Path.Circle({ center: hp, radius: 4.5 / z, fillColor: '#fff', strokeColor: blue, strokeWidth: 1.3 / z, insert: false }), { type: 'handle', seg: s, which });
+    }
+  }
+  for (const p of editPaths()) for (const s of p.segments){
+    const on = ptSel.includes(s), r = 5.5 / z;
+    const a = isSmooth(s) ? new Path.Circle({ center: s.point, radius: r, insert: false }) : new Path.Rectangle({ point: s.point.subtract(r), size: [2 * r, 2 * r], insert: false });
+    a.fillColor = on ? blue : '#fff'; a.strokeColor = blue; a.strokeWidth = 1.5 / z;
+    reg(a, { type: 'anchor', seg: s });
+  }
+}
+function bendOf(s1){ const s2 = s1.next, ch = s2.point.subtract(s1.point), L = ch.length || 1, n = P(-ch.y / L, ch.x / L); return Math.max(-1, Math.min(1, (s1.handleOut.dot(n) + s2.handleIn.dot(n)) / 2 / (0.66 * L))); }
+function setBend(s1, b){
+  const s2 = s1.next, ch = s2.point.subtract(s1.point), L = ch.length || 1, n = P(-ch.y / L, ch.x / L);
+  if (Math.abs(b) < 0.02){ s1.handleOut = P(0, 0); s2.handleIn = P(0, 0); return; }
+  const off = n.multiply(b * 0.66 * L); s1.handleOut = ch.multiply(1 / 3).add(off); s2.handleIn = ch.multiply(-1 / 3).add(off);
+}
+function updatePtBar(){
+  const bar = $('#ptbar'); bar.hidden = false;
+  const segs = workSegs(), lbl = $('#ptLbl'), small = document.createElement('small'); lbl.innerHTML = '';
+  if (!editTarget){ lbl.append('Edit points'); small.textContent = 'click a shape to edit it'; }
+  else if (ptSel.length){ lbl.append(ptSel.length + (ptSel.length === 1 ? ' point' : ' points')); small.textContent = ptSel.length === 1 ? (isSmooth(ptSel[0]) ? 'curve point · drag its handles' : 'corner point · drag to move') : 'drag any one to move all'; }
+  else if (edgeSel){ lbl.append('Edge'); small.textContent = 'drag it, or bend it'; }
+  else { lbl.append((editTarget.data && editTarget.data.label) || 'Shape'); small.textContent = 'click a point or edge · double-click to add'; }
+  lbl.append(small);
+  $$('[data-pact=corner],[data-pact=smooth],[data-pact=delete]').forEach(b => b.disabled = !segs.length);
+  const hasEdge = !!edgeSegs().length && !ptSel.length;
+  $$('[data-pact=add],[data-pact=straight]').forEach(b => b.hidden = !hasEdge);
+  $('#bendBox').hidden = !hasEdge;
+  $('#rotBox').hidden = $('#sclBox').hidden = segs.length < 2;
+  if (edgeSel !== lastEdge){ lastEdge = edgeSel; if (hasEdge){ const v = Math.round(bendOf(edgeSel) * 100); $('#bend').value = v; $('#bendNum').value = v; } }
+}
+function afterPtEdit(final){ markEdited(); refreshUI(); if (final !== false) commit(); }
+function smoothSeg(s){
+  const pv = s.previous, nx = s.next;
+  if (pv && nx){ const t = nx.point.subtract(pv.point).normalize(); s.handleIn = t.multiply(-s.point.getDistance(pv.point) / 3); s.handleOut = t.multiply(s.point.getDistance(nx.point) / 3); }
+  else if (nx){ s.handleIn = P(0, 0); s.handleOut = nx.point.subtract(s.point).divide(3); }
+  else if (pv){ s.handleOut = P(0, 0); s.handleIn = pv.point.subtract(s.point).divide(3); }
+}
+function removePathFromTarget(p){
+  if (p === editTarget){ editTarget.remove(); editTarget = null; sel = []; return; }
+  p.remove(); if (editTarget && editTarget.children && !editTarget.children.length){ editTarget.remove(); editTarget = null; sel = []; }
+}
+function breakEdge(s){
+  const p = s.path, idx = s.index;
+  if (p.closed){ const segs = p.removeSegments(); p.addSegments(segs.slice(idx + 1).concat(segs.slice(0, idx + 1))); p.closed = false; }
+  else { const rest = p.removeSegments(idx + 1); if (rest.length >= 2){ const np = new Path({ segments: rest, insert: false }); np.style = p.style; np.opacity = p.opacity; np.data = { kind: 'path', label: 'Open path' }; np.insertAbove(p); } if (p.segments.length < 2) removePathFromTarget(p); }
+  edgeSel = null; ptSel = []; afterPtEdit(); toast('Edge removed', 'the shape is now open');
+}
+function deletePoints(){
+  if (!workSegs().length) return;
+  if (!ptSel.length && edgeSel){ breakEdge(edgeSel); return; }
+  for (const s of ptSel.slice()){ const p = s.path; if (!p) continue; if (p.segments.length <= (p.closed ? 3 : 2)) removePathFromTarget(p); else s.remove(); }
+  const n = ptSel.length; ptSel = []; edgeSel = null; afterPtEdit(); toast(n === 1 ? 'Point deleted' : n + ' points deleted');
+}
+const PACT = {
+  corner(){ workSegs().forEach(s => { s.handleIn = P(0, 0); s.handleOut = P(0, 0); }); lastEdge = null; afterPtEdit(); },
+  smooth(){ workSegs().forEach(smoothSeg); lastEdge = null; afterPtEdit(); },
+  add(){ if (!edgeSel) return; const nc = edgeSel.curve.divideAtTime(0.5); ptSel = nc ? [nc.segment1] : []; edgeSel = null; afterPtEdit(); },
+  straight(){ if (!edgeSegs().length) return; edgeSel.handleOut = P(0, 0); edgeSel.next.handleIn = P(0, 0); lastEdge = null; afterPtEdit(); },
+  delete: deletePoints,
+  done(){ const t = editTarget; setTool('select'); setSel(t && t.parent ? [t] : []); }
+};
+$$('[data-pact]').forEach(b => b.addEventListener('click', () => PACT[b.dataset.pact]()));
+$('#bend').addEventListener('input', e => { if (!edgeSegs().length) return; setBend(edgeSel, +e.target.value / 100); $('#bendNum').value = e.target.value; markEdited(); refreshUI(); });
+$('#bend').addEventListener('change', () => { if (edgeSel) commit(); });
+$('#bendNum').addEventListener('change', e => {
+  if (!edgeSegs().length) return; const v = Math.max(-100, Math.min(100, Math.round(+e.target.value || 0)));
+  e.target.value = v; $('#bend').value = v; setBend(edgeSel, v / 100); markEdited(); refreshUI(); commit();
+});
+function ptTransformApply(a, k){
+  if (!ptBase){ const segs = workSegs(); if (!segs.length) return; const c = segs.reduce((a, s) => a.add(s.point), P(0, 0)).divide(segs.length); ptBase = { c, list: segs.map(s => ({ s, p: s.point.clone(), hi: s.handleIn.clone(), ho: s.handleOut.clone() })) }; }
+  if (typeof a !== 'number'){ a = +$('#prot').value; k = +$('#pscl').value / 100; }
+  $('#protNum').value = a; $('#psclNum').value = Math.round(k * 100);
+  for (const o of ptBase.list){ o.s.point = o.p.subtract(ptBase.c).rotate(a).multiply(k).add(ptBase.c); o.s.handleIn = o.hi.rotate(a).multiply(k); o.s.handleOut = o.ho.rotate(a).multiply(k); }
+  markEdited(); refreshUI();
+}
+function ptTransformEnd(){ if (!ptBase) return; ptBase = null; $('#prot').value = 0; $('#pscl').value = 100; $('#protNum').value = 0; $('#psclNum').value = 100; commit(); }
+['prot', 'pscl'].forEach(id => { $('#' + id).addEventListener('input', () => ptTransformApply()); $('#' + id).addEventListener('change', ptTransformEnd); });
+// typed values apply once ("rotate by", "scale by"), then the fields reset
+$('#protNum').addEventListener('change', e => { const a = +e.target.value || 0; if (!a || workSegs().length < 2) { e.target.value = 0; return; } ptTransformApply(a, 1); ptTransformEnd(); toast('Points rotated ' + a + '°'); });
+$('#psclNum').addEventListener('change', e => { const k = Math.max(5, Math.min(1000, +e.target.value || 100)); if (k === 100 || workSegs().length < 2) { e.target.value = 100; return; } ptTransformApply(0, k / 100); ptTransformEnd(); toast('Points scaled to ' + k + '%'); });
+function pointsDown(e){
+  const z = view.zoom;
+  const h = uiL.hitTest(e.point, { fill: true, stroke: true, tolerance: 4 / z, match: r => r.item.data && r.item.data.ui !== undefined });
+  if (h){
+    const u = UIREF[h.item.data.ui];
+    if (u.type === 'handle'){ const s = u.seg, other = u.which === 'handleIn' ? 'handleOut' : 'handleIn';
+      const smooth = !s[other].isZero() && Math.abs(s.handleIn.normalize().dot(s.handleOut.normalize()) + 1) < 0.05;
+      drag = { mode: 'handle', seg: s, which: u.which, other, smooth, moved: false }; return; }
+    const s = u.seg;
+    if (e.modifiers.shift) ptSel = ptSel.includes(s) ? ptSel.filter(x => x !== s) : ptSel.concat([s]);
+    else if (!ptSel.includes(s)) ptSel = [s];
+    edgeSel = null; drag = { mode: 'pts', anchor: s, start: s.point.clone(), down: e.point.clone(), moved: false }; refreshUI(); return;
+  }
+  if (editTarget){ const hc = editTarget.hitTest(e.point, { curves: true, tolerance: 7 / z }); if (hc && hc.location){ edgeSel = hc.location.curve.segment1; ptSel = []; drag = { mode: 'edgedrag', moved: false }; refreshUI(); return; } }
+  const hit = mainL.hitTest(e.point, { fill: true, stroke: true, tolerance: 6 / z });
+  if (hit){ const it = shapeOf(hit.item); if (it !== editTarget){ setEditTarget(it); drag = null; return; } drag = { mode: 'pmove', moved: false }; return; }
+  if (!e.modifiers.shift){ ptSel = []; edgeSel = null; }
+  drag = { mode: 'ptmarquee', start: e.point.clone(), add: e.modifiers.shift }; refreshUI();
+}
+
+/* ---------- cut tool ---------- */
+function splitCompound(res){
+  if (!res) return [];
+  if (res.className !== 'CompoundPath') return [res];
+  const kids = res.children.filter(k => Math.abs(k.area) > 0.5); if (kids.length < 2) return kids.map(k => k.clone({ insert: false }));
+  const big = kids.reduce((m, k) => Math.abs(k.area) > Math.abs(m.area) ? k : m), sgn = Math.sign(big.area);
+  const groups = kids.filter(k => Math.sign(k.area) === sgn).map(o => ({ o, h: [] }));
+  for (const hk of kids.filter(k => Math.sign(k.area) !== sgn)){ const ip = hk.interiorPoint; const g = groups.filter(g => g.o.contains(ip)).sort((a, b) => Math.abs(a.o.area) - Math.abs(b.o.area))[0]; if (g) g.h.push(hk); }
+  return groups.map(g => { const o = g.o.clone({ insert: false }); if (!g.h.length) return o; return new CompoundPath({ children: [o].concat(g.h.map(x => x.clone({ insert: false }))), fillRule: 'evenodd', insert: false }); });
+}
+function splitOpen(it, knife){
+  if (it.className === 'CompoundPath') return [];
+  const p = it.clone({ insert: false }); const offs = p.getIntersections(knife).map(l => l.offset).sort((a, b) => b - a);
+  const parts = []; for (const off of offs){ const rest = p.splitAt(off); if (rest){ rest.remove(); parts.push(rest); } }
+  parts.push(p); return parts.filter(q => q.length > 0.5);
+}
+function cutWith(a, b){
+  const v = b.subtract(a); if (v.length * view.zoom < 6) return;
+  const n = P(-v.y, v.x).normalize(0.45);
+  const band = new Path({ segments: [a.add(n), b.add(n), b.subtract(n), a.subtract(n)], closed: true, insert: false });
+  const knife = new Path.Line({ from: a, to: b, insert: false });
+  const pieces = []; let cut = 0;
+  for (const it of allShapes({ editable: true })){
+    if (!it.bounds.intersects(knife.bounds.expand(2)) || !it.getIntersections(knife).length) continue;
+    const parts = isClosed(it) ? splitCompound(it.subtract(band, { insert: false })) : splitOpen(it, knife);
+    if (parts.length < 2) continue;
+    const name = ((it.data && it.data.label) || 'shape').toLowerCase();
+    parts.forEach(p => { p.fillColor = it.fillColor; p.strokeColor = it.strokeColor; p.strokeWidth = it.strokeWidth; p.strokeCap = it.strokeCap; p.strokeJoin = it.strokeJoin; p.opacity = it.opacity;
+      p.data = { kind: 'path', label: 'Cut piece', detail: 'from ' + name }; it.parent.insertChild(it.index + 1, p); });
+    it.remove(); pieces.push(...parts); cut++;
+  }
+  if (!cut){ toast('Draw the cut all the way across a shape'); return; }
+  setSel(pieces); commit(); toast('Cut into ' + pieces.length + ' parts', 'switch to Select to move them apart');
+}
+function updateChrome(){
+  const n = allShapes({ hidden: true }).length; $('#count').textContent = n + (n === 1 ? ' shape' : ' shapes');
+  $('#undo').disabled = hi <= 0; $('#redo').disabled = hi >= hist.length - 1;
+}
+
+/* ---------- toast & ghost ---------- */
+let toastT;
+function toast(main, sub){ const t = $('#toast'); t.textContent = main; if (sub){ const i = document.createElement('i'); i.textContent = sub; t.append(i); } t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800); }
+function ghost(path){
+  fxL.addChild(path); const t0 = performance.now();
+  (function step(t){ const k = Math.min(1, (t - t0) / 450); path.opacity = 0.7 * (1 - k); if (k < 1) requestAnimationFrame(step); else path.remove(); })(t0);
+}
+
+/* ---------- stroke completion ---------- */
+function finishStroke(pts){
+  if (pts.length < 2) return;
+  hideHint();
+  let it;
+  if (S.autoPerfect){ const sh = S.mode === 'organic' ? organicShape(pts) : recognize(pts, false); if (!sh) return; it = build(sh); toast(sh.label, sh.detail); }
+  else it = roughItem(pts);
+  if (S.symmetry){ const cx = it.bounds.center.x; if (Math.abs(cx - MID) > 1) mirrorClone(it); }
+  commit();
+}
+function perfectSelection(){
+  if (!sel.length){ toast('Select shapes to perfect first'); return; }
+  const out = []; let done = 0;
+  const exact = ['circle', 'ellipse', 'poly', 'line', 'polyline', 'arc'];
+  for (const it of sel){
+    let raw, closed = false;
+    if (it.data && exact.includes(it.data.kind)){ out.push(it); continue; }
+    done++;
+    if (it.data && it.data.raw) raw = it.data.raw.map(pt);
+    else {
+      const src = it.className === 'CompoundPath' ? it.children[0] : it;
+      if (!src || !src.segments) { out.push(it); continue; }
+      const c = src.clone({ insert: false }); c.flatten(Math.max(1, it.bounds.width / 200)); raw = c.segments.map(s => s.point.clone()); closed = src.closed;
+    }
+    EXCL = new Set(sel);
+    const sh = recognize(raw, closed);
+    EXCL = new Set();
+    if (!sh){ out.push(it); continue; }
+    const n = build(sh);
+    if (it.data && it.data.kind === 'rough'){ const c = it.strokeColor; if (sh.closed && n.fillColor) n.fillColor = c; else n.strokeColor = c; }
+    else {
+      n.fillColor = sh.closed ? it.fillColor : null; n.strokeColor = it.strokeColor || (sh.closed ? null : it.fillColor);
+      if (it.strokeColor) n.strokeWidth = it.strokeWidth; n.opacity = it.opacity;
+      if (sh.closed && !n.fillColor && !n.strokeColor) n.fillColor = INK;
+    }
+    n.insertAbove(it); it.remove(); out.push(n);
+    if (sel.length === 1) toast(sh.label, sh.detail);
+  }
+  if (!done) toast('Already exact geometry', 'Perfect works on rough, organic, traced and merged shapes');
+  else if (sel.length > 1) toast('Perfected ' + done + (done === 1 ? ' shape' : ' shapes'));
+  setSel(out); commit();
+}
+
+/* ---------- boolean & arrange actions ---------- */
+function isClosed(it){ return it.className === 'CompoundPath' || it.closed; }
+function boolOp(op){
+  if (sel.length < 2) return;
+  if (!sel.every(isClosed)){ toast('Combine works on closed shapes', 'lines, arcs and groups are skipped'); }
+  combine(sel.filter(isClosed), op);
+}
+function combine(list, op){
+  const items = list.slice().sort(byStack); if (items.length < 2) return;
+  const base = items[0], top = items[items.length - 1];
+  let res = base.clone({ insert: false });
+  for (const o of items.slice(1)){ const r = res[op](o, { insert: false }); res = r; }
+  res.fillColor = base.fillColor || base.strokeColor; res.strokeColor = base.fillColor ? base.strokeColor : null; res.strokeWidth = base.strokeWidth; res.opacity = base.opacity;
+  if (!base.fillColor){ res.fillColor = null; res.strokeColor = base.strokeColor; }
+  const names = { unite: 'Merged shape', subtract: 'Cut-out shape', intersect: 'Overlap shape', exclude: 'Excluded shape' };
+  res.data = { kind: 'path', label: names[op], detail: items.length + ' shapes combined' };
+  res.insertAbove(top); const parents = items.map(i => i.parent);
+  items.forEach(i => i.remove()); parents.forEach(pruneGroups);
+  setSel([res]); commit(); toast(names[op], items.length + ' shapes');
+}
+// cut the cutter out of every target; the cutter goes away unless keep is set
+function negate(cutter, targetsList, keep){
+  if (!cutter || !targetsList.length){ toast('Start on the shape to cut away', 'then drag onto the shapes to cut it from'); return; }
+  const out = [], label = ((cutter.data && cutter.data.label) || 'shape').toLowerCase();
+  for (const t of targetsList){
+    const r = t.subtract(cutter, { insert: false }); const parent = t.parent;
+    if (!r || r.isEmpty()){ t.remove(); pruneGroups(parent); continue; }
+    r.fillColor = t.fillColor; r.strokeColor = t.strokeColor; r.strokeWidth = t.strokeWidth; r.strokeCap = t.strokeCap; r.strokeJoin = t.strokeJoin; r.opacity = t.opacity;
+    r.data = { kind: 'path', label: 'Cut-out shape', detail: 'minus ' + label };
+    r.insertAbove(t); t.remove(); out.push(r);
+  }
+  if (!keep){ const p = cutter.parent; cutter.remove(); pruneGroups(p); }
+  setSel(out); commit(); toast('Negated', 'cut from ' + targetsList.length + (targetsList.length === 1 ? ' shape' : ' shapes'));
+}
+function pruneGroups(g){ while (g && g !== mainL && isGroup(g) && !g.children.length){ const p = g.parent; g.remove(); g = p; } }
+function groupSel(){
+  const items = sel.filter(it => it.parent).sort(byStack);
+  if (items.length < 2){ toast('Select two or more shapes to group'); return; }
+  const top = items[items.length - 1], parents = items.map(i => i.parent);
+  const g = new Group({ insert: false }); g.insertAbove(top); g.addChildren(items); parents.forEach(pruneGroups);
+  g.data = { kind: 'group', label: 'Group' };
+  setSel([g]); commit(); toast('Grouped ' + items.length + ' items', 'Ctrl click selects inside');
+}
+function ungroupSel(){
+  const gs = sel.filter(isGroup); if (!gs.length){ toast('Select a group to ungroup'); return; }
+  const out = sel.filter(it => !isGroup(it));
+  gs.forEach(g => { const kids = g.children.slice(); if (g.opacity !== 1) kids.forEach(k => k.opacity *= g.opacity);
+    g.parent.insertChildren(g.index, kids); g.remove(); out.push(...kids); });
+  setSel(out); commit(); toast('Ungrouped');
+}
+const ACT = {
+  perfect: perfectSelection,
+  points(){ if (sel.length === 1 && isGroup(sel[0])) toast('Double-click a shape in the group to edit it'); else if (sel.length === 1) setTool('points'); },
+  unite: () => boolOp('unite'), subtract: () => boolOp('subtract'), intersect: () => boolOp('intersect'), exclude: () => boolOp('exclude'),
+  group: groupSel, ungroup: ungroupSel,
+  dup(){ const c = sel.map(it => { const k = cloneItem(it); transformItem(k, new Matrix().translate(S.gridSize, S.gridSize)); return k; }); setSel(c); commit(); },
+  flipH(){ const b = selBounds(); sel.forEach(it => { transformItem(it, new Matrix().scale(-1, 1, b.center)); it.data.rot = normA(-(it.data.rot || 0)); }); refreshUI(); commit(); },
+  flipV(){ const b = selBounds(); sel.forEach(it => { transformItem(it, new Matrix().scale(1, -1, b.center)); it.data.rot = normA(-(it.data.rot || 0)); }); refreshUI(); commit(); },
+  mirror(){ const c = sel.map(mirrorClone); setSel(sel.concat(c)); commit(); toast('Mirrored across the center axis'); },
+  center(){ const b = selBounds(); const m = new Matrix().translate(P(MID, MID).subtract(b.center)); sel.forEach(it => transformItem(it, m)); refreshUI(); commit(); },
+  front(){ sel.slice().sort((a, b) => a.index - b.index).forEach(it => it.bringToFront()); commit(); },
+  back(){ sel.slice().sort((a, b) => b.index - a.index).forEach(it => it.sendToBack()); commit(); },
+  delete(){ if (!sel.length) return; sel.forEach(it => { const p = it.parent; it.remove(); pruneGroups(p); }); setSel([]); commit(); }
+};
+$$('.sb[data-act]').forEach(b => b.addEventListener('click', () => ACT[b.dataset.act]()));
+$('#selRot').addEventListener('input', e => rotateSelTo(+e.target.value));
+$('#selRot').addEventListener('change', () => { if (sel.length) commit(); });
+$('#selRotNum').addEventListener('change', e => { const v = +e.target.value; if (!isFinite(v)) return; rotateSelTo(normA(v)); e.target.value = curRot(); if (sel.length) commit(); });
+
+/* ---------- merge / negate by dragging ---------- */
+function buildCollect(d, p){
+  const hits = mainL.hitTestAll(p, { fill: true, stroke: true, tolerance: 4 / view.zoom }) || [];
+  const shapes = []; hits.forEach(h => { const s = shapeOf(h.item); if (s && !isGroup(s) && isClosed(s) && !shapes.includes(s)) shapes.push(s); });
+  if (d.neg){
+    if (!d.cutter){ d.cutter = shapes[0] || null; return; }
+    const t = shapes.find(s => s !== d.cutter); if (t && !d.touched.includes(t)) d.touched.push(t);
+  } else if (shapes[0] && !d.touched.includes(shapes[0])) d.touched.push(shapes[0]);
+}
+function drawBuild(d){
+  refreshUI(); const z = view.zoom, col = d.neg ? '#e0457b' : '#2457e6';
+  const mark = (s, fill) => { const o = s.clone({ insert: false }); o.data = {}; o.fillColor = fill; o.strokeColor = col; o.strokeWidth = 2 / z; o.dashArray = null; o.opacity = 1; o.shadowColor = null; uiL.addChild(o); };
+  d.touched.forEach(s => mark(s, d.neg ? 'rgba(36,87,230,0.10)' : 'rgba(36,87,230,0.18)'));
+  if (d.cutter) mark(d.cutter, 'rgba(224,69,123,0.28)');
+  uiL.addChild(new Path({ segments: d.pts, strokeColor: col, strokeWidth: 2.5 / z, strokeCap: 'round', strokeJoin: 'round', opacity: 0.85, insert: false }));
+}
+
+/* ---------- pointer tool ---------- */
+const tool = new paper.Tool(); tool.minDistance = 1;
+let drag = null, spaceDown = false;
+tool.onMouseDown = e => {
+  const btn = e.event && e.event.button;
+  if (spaceDown || S.tool === 'pan' || btn === 1){ drag = { mode: 'pan' }; stage.classList.add('panning'); return; }
+  if (picking){
+    const hit = mainL.hitTest(e.point, { fill: true, stroke: true, tolerance: 6 / view.zoom });
+    if (hit){ const it = topItem(hit.item); const c = itemHex(it.fillColor) || itemHex(it.strokeColor); if (c){ setColor(c, true); toast('Picked ' + c.toUpperCase(), sel.length ? 'applied to selection' : 'used for new shapes'); } }
+    else toast('No shape there', 'color unchanged');
+    setPicking(false); drag = null; return;
+  }
+  if (S.tool === 'cut'){ drag = { mode: 'cut', a: e.point.clone() }; return; }
+  if (S.tool === 'merge' || S.tool === 'negate'){
+    if (sel.length) setSel([]);
+    drag = { mode: 'build', neg: S.tool === 'negate' || e.modifiers.alt, pts: [e.point.clone()], touched: [], cutter: null };
+    buildCollect(drag, e.point); drawBuild(drag); return;
+  }
+  if (S.tool === 'points'){ drag = null; pointsDown(e); return; }
+  if (S.tool === 'sketch'){
+    const pc = S.stroke || S.fill || INK;
+    const p = new Path({ strokeColor: pc.toLowerCase() === '#ffffff' ? '#8a94a3' : pc, strokeWidth: 2.5 / view.zoom, strokeCap: 'round', strokeJoin: 'round', insert: false });
+    p.add(e.point); uiL.addChild(p); drag = { mode: 'draw', pts: [e.point.clone()], path: p }; return;
+  }
+  const h = uiL.hitTest(e.point, { fill: true, stroke: true, tolerance: 5 / view.zoom });
+  if (h && h.item.data && h.item.data.handle){
+    const b = selBounds(), k = h.item.data.handle;
+    if (k === 'rot') drag = { mode: 'rotate', c: b.center, a0: deg(Math.atan2(e.point.y - b.center.y, e.point.x - b.center.x)), last: 0 };
+    else { const piv = { nw: b.bottomRight, ne: b.bottomLeft, se: b.topLeft, sw: b.topRight }[k]; drag = { mode: 'scale', piv, d0: e.point.getDistance(piv), last: 1 }; }
+    return;
+  }
+  const hit = mainL.hitTest(e.point, { fill: true, stroke: true, tolerance: 6 / view.zoom });
+  if (hit){
+    const it = (e.modifiers.control || e.modifiers.meta) ? shapeOf(hit.item) : topItem(hit.item);
+    if (e.modifiers.shift){ setSel(sel.includes(it) ? sel.filter(s => s !== it) : sel.concat([it])); }
+    else if (!sel.includes(it)) setSel([it]);
+    drag = { mode: 'move', moved: false };
+  } else {
+    if (!e.modifiers.shift) setSel([]);
+    drag = { mode: 'marquee', start: e.point.clone(), add: e.modifiers.shift };
+  }
+};
+tool.onMouseDrag = e => {
+  if (!drag) return;
+  if (drag.mode === 'pan'){ view.center = view.center.add(e.downPoint.subtract(e.point)); refreshUI(); return; }
+  if (drag.mode === 'draw'){ drag.pts.push(e.point.clone()); drag.path.add(e.point); return; }
+  if (drag.mode === 'build'){ drag.pts.push(e.point.clone()); buildCollect(drag, e.point); drawBuild(drag); return; }
+  if (drag.mode === 'cut'){
+    let b = e.point; const v = b.subtract(drag.a);
+    if (S.angle && !e.modifiers.alt) b = drag.a.add(dir(snapAng(deg(Math.atan2(v.y, v.x)))).multiply(v.length));
+    drag.b = b; refreshUI(); const z = view.zoom;
+    uiL.addChild(new Path.Line({ from: drag.a, to: b, strokeColor: '#e0457b', strokeWidth: 2 / z, dashArray: [7 / z, 5 / z], insert: false }));
+    uiL.addChild(new Path.Circle({ center: drag.a, radius: 4 / z, fillColor: '#e0457b', insert: false }));
+    uiL.addChild(new Path.Circle({ center: b, radius: 4 / z, fillColor: '#e0457b', insert: false }));
+    return;
+  }
+  if (drag.mode === 'pts'){
+    let target = drag.start.add(e.point.subtract(drag.down));
+    if (!e.modifiers.alt){ EXCL = new Set([editTarget]); target = snapPoint(target); EXCL = new Set(); }
+    const delta = target.subtract(drag.anchor.point);
+    if (!delta.isZero()){ ptSel.forEach(s => { s.point = s.point.add(delta); }); drag.moved = true; markEdited(); refreshUI(); }
+    return;
+  }
+  if (drag.mode === 'edgedrag'){ edgeSegs().forEach(s => { s.point = s.point.add(e.delta); }); drag.moved = true; lastEdge = null; markEdited(); refreshUI(); return; }
+  if (drag.mode === 'handle'){ const s = drag.seg, v = e.point.subtract(s.point); s[drag.which] = v; if (drag.smooth && !e.modifiers.alt){ const L = s[drag.other].length; s[drag.other] = v.normalize(-L); } drag.moved = true; lastEdge = null; markEdited(); refreshUI(); return; }
+  if (drag.mode === 'pmove'){ transformItem(editTarget, new Matrix().translate(e.delta)); drag.moved = true; refreshUI(); return; }
+  if (drag.mode === 'ptmarquee'){ refreshUI(); uiL.addChild(new Path.Rectangle({ from: drag.start, to: e.point, strokeColor: '#2457e6', strokeWidth: 1 / view.zoom, fillColor: 'rgba(36,87,230,0.08)', insert: false })); return; }
+  if (drag.mode === 'move'){ const m = new Matrix().translate(e.delta); sel.forEach(it => transformItem(it, m)); drag.moved = true; refreshUI(); return; }
+  if (drag.mode === 'scale'){ const f = Math.max(0.05, e.point.getDistance(drag.piv) / drag.d0); const m = new Matrix().scale(f / drag.last, drag.piv); sel.forEach(it => transformItem(it, m)); drag.last = f; drag.moved = true; refreshUI(); return; }
+  if (drag.mode === 'rotate'){ let a = deg(Math.atan2(e.point.y - drag.c.y, e.point.x - drag.c.x)) - drag.a0; if (S.angle && !e.modifiers.alt) a = Math.round(a / S.angle) * S.angle;
+    const m = new Matrix().rotate(a - drag.last, drag.c); sel.forEach(it => { transformItem(it, m); addRot(it, a - drag.last); }); if (sel.length !== 1) selRotVal = normA(selRotVal + a - drag.last);
+    drag.last = a; drag.moved = true; refreshUI(); return; }
+  if (drag.mode === 'marquee'){ refreshUI(); uiL.addChild(new Path.Rectangle({ from: drag.start, to: e.point, strokeColor: '#2457e6', strokeWidth: 1 / view.zoom, fillColor: 'rgba(36,87,230,0.08)', insert: false })); }
+};
+tool.onMouseUp = e => {
+  if (!drag) return; const d = drag; drag = null; stage.classList.remove('panning');
+  if (d.mode === 'draw'){ d.path.remove(); const g = d.path.clone({ insert: false }); finishStroke(d.pts); ghost(g); return; }
+  if (d.mode === 'cut'){ refreshUI(); if (d.b) cutWith(d.a, d.b); return; }
+  if (d.mode === 'build'){
+    refreshUI();
+    if (d.neg) negate(d.cutter, d.touched, e.modifiers.shift);
+    else if (d.touched.length >= 2) combine(d.touched, 'unite');
+    else toast('Drag across two or more shapes to merge them', 'Alt-drag to negate');
+    return;
+  }
+  if (['pts', 'edgedrag', 'handle', 'pmove'].includes(d.mode)){ if (d.moved) commit(); refreshUI(); return; }
+  if (d.mode === 'ptmarquee'){
+    const r = new Rectangle(d.start, e.point);
+    if (r.width * view.zoom > 3){ const inside = []; editPaths().forEach(p => p.segments.forEach(s => { if (r.contains(s.point)) inside.push(s); })); ptSel = d.add ? [...new Set(ptSel.concat(inside))] : inside; edgeSel = null; }
+    refreshUI(); return;
+  }
+  if (d.mode === 'move' || d.mode === 'scale' || d.mode === 'rotate'){ if (d.moved){ if (d.mode === 'scale') sel.forEach(it => { if (it.data && it.data.detail && it.data.r) it.data.detail = 'r ' + Math.round(it.data.r); }); commit(); } refreshUI(); return; }
+  if (d.mode === 'marquee'){ const r = new Rectangle(d.start, e.point); if (r.width * view.zoom > 3){ const hits = mainL.children.filter(it => it.visible && !it.locked && r.intersects(it.bounds)); setSel(d.add ? [...new Set(sel.concat(hits))] : hits); } else refreshUI(); }
+};
+
+/* ---------- view: fit, zoom, resize ---------- */
+function fit(){ const s = view.viewSize; view.zoom = Math.min(s.width, s.height) / (AB * 1.1); view.center = P(MID, MID); refreshUI(); }
+function zoomBy(f, at){ const nz = view.zoom * f; if (nz < 0.08 || nz > 12) return; view.scale(f, at || view.center); refreshUI(); }
+cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1, view.viewToProject(P(e.clientX - r.left, e.clientY - r.top))); }, { passive: false });
+$('#zIn').onclick = () => zoomBy(1.25); $('#zOut').onclick = () => zoomBy(0.8); $('#zFit').onclick = fit;
+let fitted = false;
+function sizeView(){ const r = stage.getBoundingClientRect(); if (r.width < 10 || r.height < 10) return; view.viewSize = new Size(r.width, r.height); if (!fitted){ fit(); fitted = true; } else refreshUI(); }
+new ResizeObserver(sizeView).observe(stage); sizeView();
+
+/* ---------- tools & keyboard ---------- */
+function setTool(t){
+  const prev = S.tool; S.tool = t;
+  $$('.tb[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t)); stage.className = 'stage t-' + t;
+  if (t === 'points'){ const tg = (editTarget && editTarget.parent) ? editTarget : (sel.length === 1 && !isGroup(sel[0]) ? sel[0] : null); setEditTarget(tg); if (!tg) toast('Click a shape to edit its points'); }
+  else if (prev === 'points'){ const tg = editTarget; editTarget = null; ptSel = []; edgeSel = null; sel = tg && tg.parent ? [tg] : []; refreshUI(); renderLayers(); }
+  if (t === 'cut') toast('Drag a line across shapes to cut them', 'Alt for any angle');
+  else if (t === 'merge') toast('Drag across shapes to merge them', 'no selection needed');
+  else if (t === 'negate') toast('Start on the shape to cut away, drag onto others', 'Shift on release keeps it');
+}
+cv.addEventListener('dblclick', e => {
+  const r = cv.getBoundingClientRect(), p = view.viewToProject(P(e.clientX - r.left, e.clientY - r.top)), z = view.zoom;
+  if (S.tool === 'select'){ const hit = mainL.hitTest(p, { fill: true, stroke: true, tolerance: 6 / z }); if (!hit) return;
+    const inner = shapeOf(hit.item);
+    // first double-click enters a group, the next one edits the shape's points
+    if (!sel.includes(inner) && inner.parent !== mainL){ setSel([inner]); toast('Selected inside group', 'Esc goes back to the group'); return; }
+    setSel([inner]); setTool('points'); return; }
+  if (S.tool === 'points' && editTarget){
+    const hc = editTarget.hitTest(p, { curves: true, tolerance: 7 / z });
+    if (hc && hc.location){ const nc = hc.location.curve.divideAtTime(hc.location.time); if (nc){ ptSel = [nc.segment1]; edgeSel = null; afterPtEdit(); toast('Point added', 'drag it, or make it a corner or curve'); } }
+  }
+});
+$$('.tb[data-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+$('#undo').onclick = undo; $('#redo').onclick = redo;
+const selectable = () => mainL.children.filter(it => it.visible && !it.locked);
+$('#selAll').onclick = () => { setTool('select'); setSel(selectable()); };
+let clearArm = 0;
+$('#clear').onclick = () => { const b = $('#clear'); if (!mainL.children.length) return;
+  if (Date.now() - clearArm < 2500){ mainL.removeChildren(); setSel([]); commit(); b.classList.remove('warn'); b.dataset.tip = 'Clear canvas'; toast('Canvas cleared', 'Ctrl Z brings it back'); clearArm = 0; }
+  else { clearArm = Date.now(); b.classList.add('warn'); b.dataset.tip = 'Click again to clear'; toast('Click the bin again to clear everything'); setTimeout(() => { b.classList.remove('warn'); b.dataset.tip = 'Clear canvas'; }, 2500); } };
+$('#perfectSel').onclick = perfectSelection;
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' && e.target.type !== 'range' && e.target.type !== 'checkbox') return;
+  const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+  if (k === ' '){ if (!spaceDown){ spaceDown = true; stage.classList.add('panning'); } e.preventDefault(); return; }
+  if (mod && k === 'z'){ e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && k === 'y'){ e.preventDefault(); redo(); return; }
+  if (mod && k === 'a'){ e.preventDefault(); setTool('select'); setSel(selectable()); return; }
+  if (mod && k === 'd'){ e.preventDefault(); if (sel.length) ACT.dup(); return; }
+  if (mod && k === 'g'){ e.preventDefault(); e.shiftKey ? ungroupSel() : groupSel(); return; }
+  if (mod) return;
+  if (k === 'escape' && picking){ setPicking(false); return; }
+  if (S.tool === 'points'){
+    if (k === 'delete' || k === 'backspace'){ e.preventDefault(); deletePoints(); return; }
+    if (k === 'escape'){ PACT.done(); return; }
+    if (k.startsWith('arrow') && workSegs().length){ e.preventDefault(); const s = e.shiftKey ? 10 : 1; const v = { arrowleft: P(-s, 0), arrowright: P(s, 0), arrowup: P(0, -s), arrowdown: P(0, s) }[k]; workSegs().forEach(q => { q.point = q.point.add(v); }); markEdited(); refreshUI(); clearTimeout(window._nt); window._nt = setTimeout(commit, 400); return; }
+  }
+  if (k === 'v') setTool('select'); else if (k === 'b' || k === 'p') setTool('sketch'); else if (k === 'h') setTool('pan');
+  else if (k === 'a') setTool('points'); else if (k === 'k') setTool('cut'); else if (k === 'i') setPicking(!picking);
+  else if (k === 'delete' || k === 'backspace'){ if (sel.length){ e.preventDefault(); ACT.delete(); } }
+  else if (k === 'enter'){ if (sel.length){ e.preventDefault(); perfectSelection(); } }
+  else if (k === 'm') setTool('merge'); else if (k === 'n') setTool('negate');
+  else if (k === 'escape'){ if (sel.length === 1 && sel[0].parent && sel[0].parent !== mainL) setSel([sel[0].parent]); else setSel([]); }
+  else if (k === ']') { if (sel.length) ACT.front(); } else if (k === '[') { if (sel.length) ACT.back(); }
+  else if (k.startsWith('arrow') && sel.length){ e.preventDefault(); const s = e.shiftKey ? 10 : 1; const v = { arrowleft: P(-s, 0), arrowright: P(s, 0), arrowup: P(0, -s), arrowdown: P(0, s) }[k]; sel.forEach(it => transformItem(it, new Matrix().translate(v))); refreshUI(); clearTimeout(window._nt); window._nt = setTimeout(commit, 400); }
+});
+document.addEventListener('keyup', e => { if (e.key === ' '){ spaceDown = false; stage.classList.remove('panning'); } });
+
+/* ---------- panel ---------- */
+$$('.tab').forEach(t => t.addEventListener('click', () => { $$('.tab').forEach(x => x.classList.toggle('on', x === t)); $$('.pane').forEach(p => p.hidden = p.dataset.pane !== t.dataset.tab); }));
+const FMT = { perfect: v => v + '%', corner: v => v + '%', smooth: v => v + '%', radius: v => v + ' px', gridSize: v => v + ' px', strokeW: v => v + ' px', opacity: v => v + '%', traceOpacity: v => v + '%', threshold: v => v, detail: v => v + '%', angle: v => v ? v + '°' : 'off' };
+// sliders get a typeable box in place of their read-out: [min, max, unit]
+const NUM = { perfect: [0, 100, '%'], corner: [0, 100, '%'], smooth: [0, 100, '%'], angle: [0, 180, '°'], radius: [0, 500, 'px'], gridSize: [5, 200, 'px'],
+  strokeW: [1, 200, 'px'], opacity: [0, 100, '%'], traceOpacity: [0, 100, '%'], threshold: [0, 255, ''], detail: [0, 100, '%'] };
+const SEGSYNC = {};
+$$('output[data-for]').forEach(o => {
+  const k = o.dataset.for, cfg = NUM[k]; if (!cfg) return;
+  const w = document.createElement('span'); w.className = 'numwrap';
+  const n = Object.assign(document.createElement('input'), { type: 'number', className: 'num', min: cfg[0], max: cfg[1], step: 1 });
+  n.dataset.num = k; n.setAttribute('aria-label', (o.parentNode.querySelector('label') || {}).textContent || k);
+  w.append(n); if (cfg[2]) w.append(Object.assign(document.createElement('i'), { textContent: cfg[2] }));
+  o.replaceWith(w);
+  n.addEventListener('change', () => {
+    let v = Math.round(+n.value); if (!isFinite(v)) v = S[k]; v = Math.max(cfg[0], Math.min(cfg[1], v));
+    S[k] = v; const r = document.querySelector('input[type=range][data-key="' + k + '"]'); if (r) r.value = v;
+    if (SEGSYNC[k]) SEGSYNC[k](); showVal(k); saveSettings(); onSetting(k, true);
+  });
+});
+function showVal(k){
+  const n = document.querySelector('input[data-num="' + k + '"]'); if (n){ if (document.activeElement !== n) n.value = S[k]; return; }
+  const o = document.querySelector('output[data-for="' + k + '"]'); if (o) o.textContent = FMT[k] ? FMT[k](S[k]) : S[k];
+}
+$$('[data-key]').forEach(inp => {
+  const k = inp.dataset.key;
+  if (inp.type === 'checkbox') inp.checked = !!S[k]; else inp.value = S[k];
+  showVal(k);
+  inp.addEventListener('input', () => { S[k] = inp.type === 'checkbox' ? inp.checked : +inp.value; showVal(k); onSetting(k, false); saveSettings(); });
+  inp.addEventListener('change', () => onSetting(k, true));
+});
+$$('[data-seg]').forEach(seg => {
+  const k = seg.dataset.seg;
+  const sync = SEGSYNC[k] = () => seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(S[k]) === b.dataset.val));
+  sync(); showVal(k);
+  seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { S[k] = isNaN(+b.dataset.val) ? b.dataset.val : +b.dataset.val; sync(); showVal(k); saveSettings(); onSetting(k, true);
+    if (k === 'mode') toast(S.mode === 'organic' ? 'Organic shapes' : 'Geometric shapes', S.mode === 'organic' ? 'strokes stay smooth and flowing' : 'strokes snap to exact geometry'); }));
+});
+function syncControls(){
+  $$('[data-key]').forEach(inp => { const k = inp.dataset.key; if (inp.type === 'checkbox') inp.checked = !!S[k]; else inp.value = S[k]; showVal(k); });
+  Object.keys(SEGSYNC).forEach(k => { SEGSYNC[k](); showVal(k); });
+  traceG.opacity = S.traceOpacity / 100;
+}
+$('#resetSet').onclick = () => {
+  Object.assign(S, DEF, { recent: S.recent, tool: S.tool, tgt: S.tgt });
+  saveSettings(); syncControls(); drawGuides(); syncPicker(); toast('Settings reset', 'organic shapes are the default');
+};
+function onSetting(k, final){
+  if (['showGrid', 'showSpiral', 'showCircles', 'gridSize', 'symmetry'].includes(k)){ drawGuides(); return; }
+  if (k === 'traceOpacity'){ traceG.opacity = S.traceOpacity / 100; return; }
+  if (!sel.length) return;
+  if (k === 'radius'){ sel = sel.map(it => { if (!it.data || it.data.kind !== 'poly') return it; const n = polyPath(it.data.pts, S.radius); n.style = it.style; n.opacity = it.opacity; n.data = Object.assign({}, it.data, { rad: S.radius }); n.insertAbove(it); it.remove(); return n; }); refreshUI(); if (final) commit(); }
+  if (k === 'strokeW'){ sel.forEach(it => (isGroup(it) ? it.getItems({ match: x => !isGroup(x) && x.parent && x.parent.className !== 'CompoundPath' }) : [it]).forEach(x => { if (x.strokeColor) x.strokeWidth = S.strokeW; })); refreshUI(); if (final) commit(); }
+  if (k === 'opacity'){ sel.forEach(it => it.opacity = S.opacity / 100); if (final) commit(); }
+}
+
+/* ---------- layers ---------- */
+const LMAP = new Map(); let lDrag = null;
+const LICON = {
+  caret: '<svg viewBox="0 0 12 12" fill="currentColor"><path d="M4 2.5L8.5 6 4 9.5z"/></svg>',
+  folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2h8.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>',
+  unlock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 7.7-1.5"/></svg>'
+};
+function layerName(it){ const d = it.data || {}; return d.name || (isGroup(it) ? 'Group' : d.label || 'Shape'); }
+function renderLayers(){
+  const ul = $('#layers'); ul.innerHTML = ''; LMAP.clear();
+  const row = (it, depth) => {
+    const id = String(it.id), g = isGroup(it), d = it.data; LMAP.set(id, it);
+    const li = document.createElement('li'); li.className = 'lyr' + (sel.includes(it) ? ' on' : '') + (it.visible ? '' : ' off');
+    li.draggable = true; li.dataset.id = id; li.style.setProperty('--d', depth);
+    const car = document.createElement('button'); car.className = 'lcar'; car.tabIndex = -1;
+    if (g){ car.innerHTML = LICON.caret; car.dataset.l = 'fold'; car.classList.toggle('open', !d.collapsed); car.setAttribute('aria-label', d.collapsed ? 'Expand group' : 'Collapse group'); } else car.style.visibility = 'hidden';
+    const th = document.createElement('span'); th.className = 'lth' + (g ? ' grp' : '');
+    if (g) th.innerHTML = LICON.folder; else { th.style.setProperty('--c', itemHex(it.fillColor) || 'transparent'); th.style.setProperty('--s', itemHex(it.strokeColor) || 'transparent'); }
+    const nm = document.createElement('span'); nm.className = 'lnm'; nm.textContent = layerName(it);
+    if (g){ const s = document.createElement('small'); s.textContent = it.children.length; nm.append(s); }
+    const lk = document.createElement('button'); lk.className = 'lic' + (it.locked ? ' act' : ''); lk.dataset.l = 'lock'; lk.innerHTML = it.locked ? LICON.lock : LICON.unlock; lk.title = it.locked ? 'Unlock' : 'Lock'; lk.setAttribute('aria-label', lk.title);
+    const ey = document.createElement('button'); ey.className = 'lic' + (it.visible ? '' : ' act'); ey.dataset.l = 'eye'; ey.innerHTML = it.visible ? LICON.eye : LICON.eyeOff; ey.title = it.visible ? 'Hide' : 'Show'; ey.setAttribute('aria-label', ey.title);
+    li.append(car, th, nm, lk, ey); ul.append(li);
+    if (g && !d.collapsed) it.children.slice().reverse().forEach(c => row(c, depth + 1));
+  };
+  mainL.children.slice().reverse().forEach(it => row(it, 0));
+  if (!mainL.children.length) ul.append(Object.assign(document.createElement('li'), { className: 'lyr-empty', textContent: 'No shapes yet. Draw something on the artboard.' }));
+  $('#lyrGroup').disabled = sel.length < 2; $('#lyrUngroup').disabled = !sel.some(isGroup); $('#lyrDel').disabled = !sel.length;
+}
+const lyrItem = el => { const li = el.closest('.lyr'); return li ? LMAP.get(li.dataset.id) : null; };
+$('#layers').addEventListener('click', e => {
+  const it = lyrItem(e.target); if (!it) return;
+  const b = e.target.closest('[data-l]');
+  if (b){
+    if (b.dataset.l === 'fold'){ it.data.collapsed = !it.data.collapsed; renderLayers(); return; }
+    if (b.dataset.l === 'eye') it.visible = !it.visible; else it.locked = !it.locked;
+    setSel(sel.filter(s => s.visible && !s.locked && !(s.isDescendant(it) && (!it.visible || it.locked)))); commit(); return;
+  }
+  if (!it.visible || it.locked){ toast(it.locked ? 'Unlock it to select it' : 'Show it to select it'); return; }
+  if (S.tool !== 'select') setTool('select');
+  if (e.shiftKey || e.ctrlKey || e.metaKey) setSel(sel.includes(it) ? sel.filter(s => s !== it) : sel.concat([it]));
+  else setSel([it]);
+});
+$('#layers').addEventListener('dblclick', e => {
+  const it = lyrItem(e.target); const nm = e.target.closest('.lnm'); if (!it || !nm) return;
+  const inp = Object.assign(document.createElement('input'), { value: layerName(it) }); inp.setAttribute('aria-label', 'Layer name');
+  nm.innerHTML = ''; nm.append(inp); inp.focus(); inp.select();
+  let done = false;
+  const finish = save => { if (done) return; done = true; if (save){ const v = inp.value.trim(); if (v) it.data.name = v; else delete it.data.name; commit(); refreshUI(); } else renderLayers(); };
+  inp.addEventListener('keydown', k => { k.stopPropagation(); if (k.key === 'Enter') finish(true); else if (k.key === 'Escape') finish(false); });
+  inp.addEventListener('blur', () => finish(true));
+});
+$('#layers').addEventListener('dragstart', e => { const it = lyrItem(e.target); if (!it) return; lDrag = it; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'layer'); });
+$('#layers').addEventListener('dragover', e => {
+  const li = e.target.closest('.lyr'); if (!li || !lDrag) return; e.preventDefault();
+  const it = LMAP.get(li.dataset.id), r = li.getBoundingClientRect(), y = (e.clientY - r.top) / r.height;
+  const zone = isGroup(it) && it !== lDrag && y > 0.28 && y < 0.72 ? 'in' : y < 0.5 ? 'above' : 'below';
+  $$('.lyr[data-zone]').forEach(x => { if (x !== li) delete x.dataset.zone; }); li.dataset.zone = zone;
+});
+$('#layers').addEventListener('dragleave', e => { const li = e.target.closest('.lyr'); if (li && !li.contains(e.relatedTarget)) delete li.dataset.zone; });
+$('#layers').addEventListener('drop', e => {
+  e.preventDefault(); const li = e.target.closest('.lyr'); const src = lDrag, zone = li && li.dataset.zone; lDrag = null;
+  $$('.lyr[data-zone]').forEach(x => delete x.dataset.zone);
+  const dst = li && LMAP.get(li.dataset.id);
+  if (!src || !dst || src === dst || dst.isDescendant(src)) return;
+  const old = src.parent;
+  if (zone === 'in'){ dst.addChild(src); dst.data.collapsed = false; } else if (zone === 'above') src.insertAbove(dst); else src.insertBelow(dst);
+  pruneGroups(old); setSel([src]); commit();
+});
+$('#layers').addEventListener('dragend', () => { lDrag = null; $$('.lyr[data-zone]').forEach(x => delete x.dataset.zone); });
+$('#lyrGroup').onclick = groupSel; $('#lyrUngroup').onclick = ungroupSel; $('#lyrDel').onclick = () => ACT.delete();
+
+/* ---------- color picker ---------- */
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const hex2rgb = h => { h = String(h).replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const rgb2hex = (r, g, b) => '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+function hsv2rgb(h, s, v){ const f = n => { const k = (n + h / 60) % 6; return (v - v * s * Math.max(0, Math.min(k, 4 - k, 1))) * 255; }; return [f(5), f(3), f(1)]; }
+function rgb2hsv(r, g, b){ r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let h = 0;
+  if (d){ if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
+  return { h, s: mx ? d / mx : 0, v: mx }; }
+const hsvHex = (h, s, v) => rgb2hex(...hsv2rgb(((h % 360) + 360) % 360, s, v));
+const mix = (a, b, t) => { const x = hex2rgb(a), y = hex2rgb(b); return rgb2hex(x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t); };
+const itemHex = c => c ? c.toCSS(true) : null;
+let HSV = { h: 220, s: 0.8, v: 0.9 }, picking = false;
+function setChip(el, c){ el.classList.toggle('none', !c); el.style.setProperty('--c', c || 'transparent'); }
+function swatchBtn(c, title){ const b = document.createElement('button'); b.style.background = c; b.title = (title ? title + ' · ' : '') + c.toUpperCase(); b.setAttribute('aria-label', b.title); b.onclick = () => setColor(c, true); return b; }
+function syncPicker(fromHex){
+  const c = S[S.tgt];
+  if (fromHex !== false && c){ const n = rgb2hsv(...hex2rgb(c)); if (n.s === 0 || n.v === 0) n.h = HSV.h; if (n.v === 0) n.s = HSV.s; HSV = n; }
+  $$('.tgt').forEach(b => b.classList.toggle('on', b.dataset.tgt === S.tgt));
+  setChip($('#chipFill'), S.fill); setChip($('#chipStroke'), S.stroke);
+  const sv = $('#sv'), knob = $('#svKnob');
+  sv.style.setProperty('--h', Math.round(HSV.h)); sv.classList.toggle('off', !c);
+  knob.style.left = HSV.s * 100 + '%'; knob.style.top = (1 - HSV.v) * 100 + '%'; knob.style.background = c || 'transparent';
+  $('#hue').value = HSV.h; if (document.activeElement !== $('#hueNum')) $('#hueNum').value = Math.round(HSV.h);
+  const rgb = c ? hex2rgb(c) : ['', '', ''];
+  if (document.activeElement !== $('#hex')) $('#hex').value = c ? c.toUpperCase() : 'None';
+  ['cr', 'cg', 'cb'].forEach((id, i) => { if (document.activeElement !== $('#' + id)) $('#' + id).value = rgb[i]; });
+  $('#colorOut').textContent = (S.tgt === 'fill' ? 'Fill ' : 'Stroke ') + (c ? c.toUpperCase() : 'none');
+  // palette
+  const sw = $('#swatches'); sw.innerHTML = '';
+  PALETTE.forEach(p => { const b = document.createElement('button'); b.className = 'swatch' + (c === p ? ' on' : ''); b.style.background = p; b.title = p.toUpperCase(); b.setAttribute('aria-label', 'Color ' + p); b.onclick = () => setColor(p, true); sw.append(b); });
+  // harmonies from the current hue
+  const harm = $('#harm'); harm.innerHTML = '';
+  const s = Math.max(HSV.s, 0.35), v = Math.max(HSV.v, 0.45);
+  harm.append(swatchBtn(hsvHex(HSV.h + 180, s, v), 'Complement'));
+  harm.append(Object.assign(document.createElement('span'), { className: 'sep' }));
+  harm.append(swatchBtn(hsvHex(HSV.h - 30, s, v), 'Analogous'), swatchBtn(hsvHex(HSV.h + 30, s, v), 'Analogous'));
+  harm.append(Object.assign(document.createElement('span'), { className: 'sep' }));
+  harm.append(swatchBtn(hsvHex(HSV.h + 120, s, v), 'Triad'), swatchBtn(hsvHex(HSV.h + 240, s, v), 'Triad'));
+  harm.append(Object.assign(document.createElement('span'), { className: 'sep' }));
+  harm.append(swatchBtn(hsvHex(HSV.h + 150, s, v), 'Split complement'), swatchBtn(hsvHex(HSV.h + 210, s, v), 'Split complement'));
+  // tints and shades
+  const base = c || hsvHex(HSV.h, HSV.s, HSV.v), tints = $('#tints'); tints.innerHTML = '';
+  [['#000000', 0.6, 'Shade'], ['#000000', 0.4, 'Shade'], ['#000000', 0.2, 'Shade']].forEach(([m, t, l]) => tints.append(swatchBtn(mix(base, m, t), l)));
+  tints.append(swatchBtn(base, 'Base'));
+  [['#ffffff', 0.25, 'Tint'], ['#ffffff', 0.5, 'Tint'], ['#ffffff', 0.75, 'Tint'], ['#ffffff', 0.9, 'Tint']].forEach(([m, t, l]) => tints.append(swatchBtn(mix(base, m, t), l)));
+  // colors used in the artwork
+  const used = []; const walk = it => { [itemHex(it.fillColor), itemHex(it.strokeColor)].forEach(h => { if (h && !used.includes(h)) used.push(h); }); if (it.children) it.children.forEach(walk); };
+  mainL.children.forEach(walk);
+  const dc = $('#docCols'); dc.innerHTML = ''; if (!used.length) dc.append(Object.assign(document.createElement('span'), { className: 'empty', textContent: 'No shapes yet' }));
+  used.slice(0, 14).forEach(h => dc.append(swatchBtn(h)));
+  const rc = $('#recent'); rc.innerHTML = ''; if (!(S.recent || []).length) rc.append(Object.assign(document.createElement('span'), { className: 'empty', textContent: 'Colors you pick appear here' }));
+  (S.recent || []).forEach(h => rc.append(swatchBtn(h)));
+}
+function applyToItem(it, tgt, hex){
+  if (isGroup(it)){ let ok = false; it.children.forEach(c => { if (applyToItem(c, tgt, hex)) ok = true; }); return ok; }
+  const closed = isClosed(it);
+  if (tgt === 'fill'){
+    if (closed){ if (!hex && !it.strokeColor) return false; it.fillColor = hex; }
+    else if (hex) it.strokeColor = hex; else return false;
+  } else {
+    if (!hex && (!closed || !it.fillColor)) return false;
+    if (hex && !it.strokeColor) it.strokeWidth = S.strokeW;
+    it.strokeColor = hex;
+  }
+  return true;
+}
+function setColor(hex, final, keepHSV){
+  S[S.tgt] = hex; let skipped = 0;
+  sel.forEach(it => { if (!applyToItem(it, S.tgt, hex)) skipped++; });
+  if (skipped && !hex) toast('A shape needs a fill or a stroke', skipped + ' kept their color');
+  syncPicker(!keepHSV);
+  if (final) finishColor();
+}
+function finishColor(){
+  const c = S[S.tgt];
+  if (c) S.recent = [c].concat((S.recent || []).filter(x => x !== c)).slice(0, 12);
+  saveSettings(); syncPicker(false); if (sel.length) commit();
+}
+const svEl = $('#sv'); let svDrag = false;
+function svMove(e){ const r = svEl.getBoundingClientRect(); HSV.s = clamp01((e.clientX - r.left) / r.width); HSV.v = 1 - clamp01((e.clientY - r.top) / r.height); setColor(hsvHex(HSV.h, HSV.s, HSV.v), false, true); }
+svEl.addEventListener('pointerdown', e => { svDrag = true; svEl.setPointerCapture(e.pointerId); svMove(e); });
+svEl.addEventListener('pointermove', e => { if (svDrag) svMove(e); });
+svEl.addEventListener('pointerup', () => { if (svDrag){ svDrag = false; finishColor(); } });
+$('#hue').addEventListener('input', e => { HSV.h = +e.target.value; if (!S[S.tgt]){ HSV.s = Math.max(HSV.s, 0.6); HSV.v = Math.max(HSV.v, 0.6); } setColor(hsvHex(HSV.h, HSV.s, HSV.v), false, true); });
+$('#hue').addEventListener('change', finishColor);
+$('#hueNum').addEventListener('change', e => { const v = +e.target.value; if (!isFinite(v)) return syncPicker(false);
+  HSV.h = ((Math.round(v) % 360) + 360) % 360; if (!S[S.tgt]){ HSV.s = Math.max(HSV.s, 0.6); HSV.v = Math.max(HSV.v, 0.6); } setColor(hsvHex(HSV.h, HSV.s, HSV.v), true, true); });
+$('#hex').addEventListener('change', e => { let v = e.target.value.trim().replace('#', ''); if (/^[0-9a-f]{3}([0-9a-f]{3})?$/i.test(v)){ setColor(rgb2hex(...hex2rgb(v)), true); } else { toast('Use a hex code like 2457E6'); syncPicker(false); } });
+['cr', 'cg', 'cb'].forEach(id => $('#' + id).addEventListener('change', () => { const v = ['cr', 'cg', 'cb'].map(k => +$('#' + k).value || 0); setColor(rgb2hex(...v), true); }));
+$$('.tgt').forEach(b => b.addEventListener('click', () => { S.tgt = b.dataset.tgt; saveSettings(); syncPicker(); }));
+$('#noneCol').onclick = () => setColor(null, true);
+$('#swapCol').onclick = () => {
+  [S.fill, S.stroke] = [S.stroke, S.fill];
+  sel.forEach(it => { if (!isClosed(it)) return; const f = it.fillColor, s = it.strokeColor; if (!f && !s) return; if (f && !s) it.strokeWidth = S.strokeW; it.fillColor = s; it.strokeColor = f; });
+  saveSettings(); syncPicker(); refreshUI(); if (sel.length) commit();
+};
+function setPicking(on){ picking = on; stage.classList.toggle('picking', on); $('#eyedrop').classList.toggle('on', on); if (on) toast('Click a shape to pick its color'); }
+$('#eyedrop').onclick = () => setPicking(!picking);
+syncPicker();
+
+/* ---------- trace ---------- */
+let raster = null;
+const fileIn = $('#file'), drop = $('#drop');
+fileIn.addEventListener('change', () => fileIn.files[0] && loadImage(fileIn.files[0]));
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) loadImage(f); });
+stage.addEventListener('dragover', e => e.preventDefault());
+stage.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) loadImage(f); });
+function loadImage(f){
+  const rd = new FileReader();
+  rd.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      traceG.removeChildren();
+      raster = new paper.Raster({ image: img, insert: false });
+      const s = Math.min(900 / img.width, 900 / img.height); raster.scale(s); raster.position = P(MID, MID);
+      traceG.addChild(raster); traceG.opacity = S.traceOpacity / 100; raster._img = img;
+      $('#traceBtn').disabled = false; $('#removeImg').disabled = false; hideHint();
+      toast('Image placed', 'sketch over it or trace it');
+    };
+    img.src = rd.result;
+  };
+  rd.readAsDataURL(f);
+}
+$('#removeImg').onclick = () => { traceG.removeChildren(); raster = null; $('#traceBtn').disabled = true; $('#removeImg').disabled = true; };
+function marching(bin, w, h){
+  const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : bin[y * w + x];
+  const adj = new Map(), K = (x2, y2) => (x2 + 2) * 8192 + (y2 + 2);
+  const link = (a, b) => { (adj.get(a) || adj.set(a, []).get(a)).push(b); (adj.get(b) || adj.set(b, []).get(b)).push(a); };
+  for (let y = -1; y < h; y++) for (let x = -1; x < w; x++){
+    const code = at(x, y) * 8 + at(x + 1, y) * 4 + at(x + 1, y + 1) * 2 + at(x, y + 1);
+    if (code === 0 || code === 15) continue;
+    const T = K(2 * x + 1, 2 * y), R = K(2 * x + 2, 2 * y + 1), B = K(2 * x + 1, 2 * y + 2), Lf = K(2 * x, 2 * y + 1);
+    switch (code){
+      case 1: case 14: link(Lf, B); break; case 2: case 13: link(B, R); break; case 3: case 12: link(Lf, R); break;
+      case 4: case 11: link(T, R); break; case 6: case 9: link(T, B); break; case 7: case 8: link(T, Lf); break;
+      case 5: link(T, R); link(Lf, B); break; case 10: link(T, Lf); link(R, B); break;
+    }
+  }
+  const seen = new Set(), loops = [];
+  for (const start of adj.keys()){
+    if (seen.has(start)) continue; const loop = []; let prev = -1, cur = start, guard = 0;
+    while (guard++ < 200000){ seen.add(cur); loop.push(cur); const n = adj.get(cur); const nx = n[0] === prev ? n[1] : n[0]; prev = cur; cur = nx; if (cur === undefined || cur === start || seen.has(cur)) break; }
+    loops.push(loop.map(k => P((Math.floor(k / 8192) - 2) / 2, (k % 8192 - 2) / 2)));
+  }
+  return loops;
+}
+function area(pts){ let a = 0; for (let i = 0; i < pts.length; i++){ const p = pts[i], q = pts[(i + 1) % pts.length]; a += p.x * q.y - q.x * p.y; } return a / 2; }
+$('#traceBtn').onclick = () => {
+  if (!raster) return;
+  const img = raster._img, max = 360, s = Math.min(1, max / Math.max(img.width, img.height));
+  const w = Math.max(2, Math.round(img.width * s)), h = Math.max(2, Math.round(img.height * s));
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(img, 0, 0, w, h);
+  const data = g.getImageData(0, 0, w, h).data, bin = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++){ const l = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]; bin[i] = S.invert ? (l > S.threshold ? 1 : 0) : (l < S.threshold ? 1 : 0); }
+  const loops = marching(bin, w, h).filter(l => l.length > 12 && Math.abs(area(l)) > w * h * 0.0006);
+  if (!loops.length){ toast('No ink found', 'adjust Ink threshold'); return; }
+  const rb = raster.bounds, k = rb.width / w;
+  const map = p => P(rb.x + p.x * k, rb.y + p.y * k);
+  const children = []; let geo = 0;
+  for (const l of loops){
+    const pts = l.filter((_, i) => i % 2 === 0).map(map);
+    let path;
+    if (S.geometrize){ const sh = recognize(pts, true); if (sh && sh.kind !== 'curve'){ path = build(sh); path.remove(); geo++; } }
+    if (!path){ path = new Path({ segments: pts, closed: true, insert: false }); path.simplify(0.5 + S.detail / 100 * 8); }
+    children.push(path);
+  }
+  const cp = new CompoundPath({ children, fillRule: 'evenodd' });
+  cp.fillColor = S.fill || S.stroke || INK; cp.strokeColor = null; cp.opacity = S.opacity / 100;
+  cp.data = { kind: 'path', label: 'Traced artwork', detail: loops.length + ' outlines' + (geo ? ' · ' + geo + ' geometrized' : '') };
+  traceG.opacity = Math.min(traceG.opacity, 0.15); S.traceOpacity = Math.round(traceG.opacity * 100); $('#traceOpacity').value = S.traceOpacity; showVal('traceOpacity');
+  setTool('select'); setSel([cp]); commit(); toast('Traced ' + loops.length + ' outlines', geo ? geo + ' snapped to geometry' : '');
+};
+
+/* ---------- export ---------- */
+function svgString(){
+  const prev = sel; uiL.visible = false;
+  const g = mainL.exportSVG({ asString: true });
+  uiL.visible = true;
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + AB + ' ' + AB + '" width="' + AB + '" height="' + AB + '">' + g + '</svg>';
+}
+let dl = null; (window.claude && window.claude.use ? window.claude.use('downloads') : Promise.resolve(null)).then(x => dl = x).catch(() => {});
+async function offer(filename, data){
+  if (dl){
+    try { await dl.save({ filename, data }); toast('Saved ' + filename); }
+    catch (err){ if (err && err.code === 'declined') toast('Download cancelled'); else toast('Download unavailable here', 'use Copy SVG'); }
+    return;
+  }
+  const blob = data instanceof Blob ? data : new Blob([data], { type: 'image/svg+xml' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+$('#expSvg').onclick = () => { if (!mainL.children.length) return toast('Nothing to export yet'); offer('geomark-logo.svg', svgString()); };
+$('#expPng').onclick = () => {
+  if (!mainL.children.length) return toast('Nothing to export yet');
+  const img = new Image(), url = URL.createObjectURL(new Blob([svgString()], { type: 'image/svg+xml' }));
+  img.onload = () => { const c = document.createElement('canvas'); c.width = c.height = 2048; c.getContext('2d').drawImage(img, 0, 0, 2048, 2048); URL.revokeObjectURL(url); c.toBlob(b => b && offer('geomark-logo.png', b), 'image/png'); };
+  img.src = url;
+};
+$('#copySvg').onclick = () => {
+  if (!mainL.children.length) return toast('Nothing to copy yet');
+  const s = svgString();
+  navigator.clipboard.writeText(s).then(() => toast('SVG code copied')).catch(() => toast('Copy blocked here', 'use Export SVG'));
+};
+
+/* ---------- hint ---------- */
+function hideHint(){ $('#hint').hidden = true; try { localStorage.setItem('geomark.hint', '1'); } catch (e) {} }
+$('#hintGo').onclick = () => { hideHint(); setTool('sketch'); };
+$('#hintClear').onclick = () => { mainL.removeChildren(); setSel([]); commit(); hideHint(); setTool('sketch'); };
+try { if (localStorage.getItem('geomark.hint')) $('#hint').hidden = true; } catch (e) {}
+
+/* ---------- start: saved work or an example mark ---------- */
+function seed(){
+  const keep = { fill: S.fill, stroke: S.stroke, radius: S.radius };
+  S.stroke = null; S.radius = 0;
+  S.fill = '#141b24'; build({ kind: 'circle', c: P(MID, MID), r: 233, closed: true, label: 'Circle', detail: 'r 233 · Fibonacci' });
+  S.fill = '#ffffff'; build({ kind: 'circle', c: P(MID, MID), r: 144, closed: true, label: 'Circle', detail: 'r 144 · Fibonacci' });
+  S.fill = '#2457e6'; build({ kind: 'poly', pts: regularPts(3, P(MID, MID + 13), 89, -90), closed: true, label: 'Equilateral triangle', detail: 'R 89 · Fibonacci' });
+  Object.assign(S, keep);
+}
+let saved = null; try { saved = localStorage.getItem('geomark.doc'); } catch (e) {}
+if (saved){ try { restore(saved); } catch (e) { mainL.removeChildren(); seed(); } } else seed();
+drawGuides(); commit(); hist = [hist[hist.length - 1]]; hi = 0; updateChrome();
+setTool('sketch');
+})();
+</script>
+
+<style>#hub-back{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:2147483000;display:flex;align-items:center;gap:6px;height:40px;padding:0 10px 0 8px;max-width:34px;overflow:hidden;white-space:nowrap;border-radius:0 10px 10px 0;background:#fff;color:#111;border:1px solid rgba(0,0,0,.18);border-left:0;font:600 13px/1 system-ui,-apple-system,'Segoe UI',sans-serif;text-decoration:none;box-shadow:0 4px 16px rgba(0,0,0,.45);transition:max-width .2s ease}#hub-back:hover,#hub-back:focus-visible{max-width:140px}#hub-back svg{flex:none}@media print{#hub-back{display:none}}</style>
+<a href="index.html" id="hub-back" title="Back to all tools" aria-label="Back to all tools"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>All tools</a>
+</body>
+</html>

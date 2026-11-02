@@ -1,0 +1,3070 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GridMaker</title>
+  <meta name="description" content="GridMaker: parametric grid and pattern maker with golden ratio, radial, polygon and modular grids, nested cell canvases, image and text patterns, layers and export.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <style>
+/* GridForge UI styles. Colours are tokens; light and dark themes swap them. */
+:root {
+  --bg: #F2F1EE;
+  --panel: #FFFFFF;
+  --panel-2: #F7F6F3;
+  --line: #E4E2DD;
+  --line-2: #D4D1CA;
+  --text: #1C1B19;
+  --muted: #6D6962;
+  --accent: #E2583E;
+  --accent-ink: #FFFFFF;
+  --accent-soft: rgba(226, 88, 62, 0.12);
+  --stage: #E6E4DF;
+  --hover: rgba(0, 0, 0, 0.05);
+  --danger: #C2362B;
+  --ok: #2E7D4F;
+  --warn: #A76A00;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
+  --radius: 8px;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #111111;
+  --panel: #191919;
+  --panel-2: #202020;
+  --line: #2B2B2B;
+  --line-2: #3A3A3A;
+  --text: #ECEAE5;
+  --muted: #9C988F;
+  --accent: #FF6B4A;
+  --accent-ink: #1A0D09;
+  --accent-soft: rgba(255, 107, 74, 0.16);
+  --stage: #0B0B0B;
+  --hover: rgba(255, 255, 255, 0.06);
+  --danger: #FF6B5E;
+  --ok: #5BC98A;
+  --warn: #E7B04B;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --bg: #111111; --panel: #191919; --panel-2: #202020; --line: #2B2B2B; --line-2: #3A3A3A;
+    --text: #ECEAE5; --muted: #9C988F; --accent: #FF6B4A; --accent-ink: #1A0D09; --accent-soft: rgba(255, 107, 74, 0.16);
+    --stage: #0B0B0B; --hover: rgba(255, 255, 255, 0.06); color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.4 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.gf-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.gf-spacer { flex: 1; }
+.gf-muted { color: var(--muted); }
+
+/* ---------- layout ---------- */
+.gf-app {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr) 304px;
+  grid-template-rows: 52px minmax(0, 1fr) 30px;
+  grid-template-areas: "top top top" "left stage right" "status status status";
+  height: 100vh;
+  height: 100dvh;
+}
+.gf-top {
+  grid-area: top;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.gf-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; letter-spacing: -0.01em; white-space: nowrap; }
+.gf-top-group { display: flex; align-items: center; gap: 4px; }
+.gf-top-select { max-width: 230px; }
+
+.gf-left, .gf-right {
+  background: var(--panel);
+  overflow-y: auto;
+  min-height: 0;
+}
+.gf-left { grid-area: left; border-right: 1px solid var(--line); padding: 4px 12px 16px; }
+.gf-right { grid-area: right; border-left: 1px solid var(--line); display: flex; flex-direction: column; overflow: hidden; }
+.gf-left h3 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 14px 0 8px; }
+.gf-sec-head { display: flex; align-items: center; justify-content: space-between; }
+.gf-hint { margin: -4px 0 8px; color: var(--muted); font-size: 11.5px; }
+
+.gf-status {
+  grid-area: status;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 12px;
+  font-size: 12px; color: var(--muted);
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  white-space: nowrap; overflow: hidden;
+}
+.gf-status-toggle { display: flex; align-items: center; gap: 4px; margin-right: 8px; cursor: pointer; }
+.gf-zoom-label { border: 0; background: none; min-width: 52px; font-variant-numeric: tabular-nums; color: var(--text); border-radius: 6px; padding: 2px 6px; }
+.gf-zoom-label:hover { background: var(--hover); }
+
+/* ---------- stage ---------- */
+.gf-stage-wrap {
+  grid-area: stage;
+  position: relative;
+  overflow: auto;
+  display: flex;
+  background: var(--stage);
+  background-image: radial-gradient(var(--line-2) 1px, transparent 1px);
+  background-size: 18px 18px;
+  min-width: 0; min-height: 0;
+  padding: 24px;
+}
+.gf-stage-wrap.dropping { box-shadow: inset 0 0 0 3px var(--accent); }
+.gf-stage { position: relative; box-shadow: var(--shadow); flex: none; margin: auto; }
+.gf-art, .gf-art svg { display: block; width: 100%; height: 100%; }
+.gf-overlay { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.gf-overlay .gf-hits path { fill: var(--accent); fill-opacity: 0; stroke: none; cursor: pointer; }
+.gf-overlay .gf-hits path:hover { fill-opacity: 0.14; }
+.gf-overlay .gf-sel { fill: var(--accent); fill-opacity: 0.2; stroke: var(--accent); pointer-events: none; }
+.gf-overlay .gf-active-group { fill: none; stroke: var(--accent); pointer-events: none; }
+.gf-overlay .gf-guide { fill: none; stroke: #FF3B7F; pointer-events: none; opacity: 0.8; }
+.gf-overlay .gf-marquee { fill: var(--accent); fill-opacity: 0.08; stroke: var(--accent); pointer-events: none; }
+.gf-overlay.gf-tool-move .gf-hits path { cursor: move; }
+.gf-overlay .gf-objbox { fill: none; stroke: var(--accent); pointer-events: none; }
+.gf-overlay .gf-handle { fill: #FFFFFF; stroke: var(--accent); cursor: nwse-resize; }
+.gf-overlay .gf-outside { fill: #000000; fill-opacity: 0.45; pointer-events: none; }
+.gf-overlay .gf-subedge { fill: none; stroke: var(--accent); pointer-events: none; }
+.gf-inline-edit {
+  position: absolute; z-index: 3; resize: both; padding: 6px 8px;
+  border: 2px solid var(--accent); border-radius: 6px;
+  background: var(--panel); color: var(--text); box-shadow: var(--shadow);
+  line-height: 1.2;
+}
+.gf-crumbs {
+  position: absolute; top: 8px; left: 8px; z-index: 4;
+  display: flex; align-items: center; gap: 6px; padding: 4px 8px 4px 4px;
+  background: var(--panel); border: 1px solid var(--line-2); border-radius: 999px; box-shadow: var(--shadow);
+}
+.gf-crumbs[hidden] { display: none; }
+.gf-crumb { border: 0; background: none; color: var(--muted); padding: 2px 4px; border-radius: 6px; }
+.gf-crumb:hover { background: var(--hover); color: var(--text); }
+.gf-crumb.on { color: var(--text); font-weight: 600; }
+.gf-seg { background: var(--hover); border-radius: calc(var(--radius) + 2px); padding: 2px; gap: 2px; }
+.gf-seg .gf-icon-btn.on { background: var(--panel); color: var(--accent); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15); }
+.gf-thumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.gf-thumb { position: relative; width: 52px; height: 52px; border: 1px solid var(--line-2); border-radius: 6px; overflow: visible; display: grid; place-items: center; background: var(--hover); }
+.gf-thumb img { width: 100%; height: 100%; object-fit: contain; border-radius: 5px; }
+.gf-thumb .gf-pal-x { position: absolute; top: -6px; right: -6px; }
+
+/* ---------- buttons & inputs ---------- */
+.gf-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 30px; padding: 4px 10px;
+  border: 1px solid var(--line-2); border-radius: var(--radius);
+  background: var(--panel); color: var(--text);
+  font-weight: 500; white-space: nowrap;
+}
+.gf-btn:hover { background: var(--hover); }
+.gf-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.gf-btn.primary:hover { filter: brightness(1.06); }
+.gf-btn.danger { color: var(--danger); }
+.gf-btn.small { min-height: 26px; padding: 2px 8px; font-size: 12px; }
+.gf-btn:disabled, .gf-icon-btn:disabled { opacity: 0.35; cursor: default; }
+.gf-icon-btn {
+  display: inline-grid; place-items: center;
+  width: 30px; height: 30px; padding: 0;
+  border: 0; border-radius: var(--radius); background: none; color: var(--text);
+}
+.gf-icon-btn:hover:not(:disabled) { background: var(--hover); }
+select, input[type="number"], input[type="text"], input:not([type]), textarea {
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--line-2); border-radius: var(--radius);
+  background: var(--panel-2);
+  min-width: 0;
+}
+textarea { width: 100%; resize: vertical; }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+input[type="checkbox"] { accent-color: var(--accent); }
+input[type="checkbox"][role="switch"] {
+  appearance: none; -webkit-appearance: none;
+  width: 34px; height: 20px; border-radius: 999px; margin: 0;
+  background: var(--line-2); position: relative; cursor: pointer; flex: none;
+  transition: background 0.15s;
+}
+input[type="checkbox"][role="switch"]::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%; background: #FFF;
+  transition: transform 0.15s;
+}
+input[type="checkbox"][role="switch"]:checked { background: var(--accent); }
+input[type="checkbox"][role="switch"]:checked::after { transform: translateX(14px); }
+input[type="color"] {
+  width: 30px; height: 30px; padding: 2px;
+  border: 1px solid var(--line-2); border-radius: var(--radius); background: var(--panel-2);
+  cursor: pointer;
+}
+
+/* ---------- left column ---------- */
+.gf-types { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.gf-type {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 4px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel-2); color: var(--muted); font-size: 11.5px; text-align: center;
+}
+.gf-type:hover { color: var(--text); border-color: var(--line-2); }
+.gf-type.on { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.gf-type span { color: var(--text); }
+.gf-templates { display: grid; gap: 4px; }
+.gf-template {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border: 1px solid transparent; border-radius: var(--radius);
+  background: none; text-align: left;
+}
+.gf-template:hover { background: var(--hover); border-color: var(--line); }
+.gf-strip { display: flex; width: 42px; height: 14px; border-radius: 4px; overflow: hidden; flex: none; box-shadow: 0 0 0 1px var(--line); }
+.gf-strip i { flex: 1; }
+.gf-layers { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.gf-layer {
+  display: flex; align-items: center; gap: 2px;
+  padding: 2px 2px 2px 0; border-radius: var(--radius);
+  border: 1px solid transparent; cursor: pointer; user-select: none;
+}
+.gf-layer:hover { background: var(--hover); }
+.gf-layer.on { background: var(--accent-soft); border-color: var(--accent); }
+.gf-layer.off .gf-layer-name { opacity: 0.45; }
+.gf-layer.dragging { opacity: 0.4; }
+.gf-layer.drop { box-shadow: 0 -2px 0 var(--accent); }
+.gf-layer .gf-icon-btn { width: 26px; height: 26px; color: var(--muted); }
+.gf-layer-ico { display: inline-grid; place-items: center; color: var(--muted); margin-right: 4px; }
+.gf-layer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- right panel ---------- */
+.gf-tabs {
+  display: flex; gap: 0;
+  padding: 8px 6px 0; border-bottom: 1px solid var(--line);
+  flex: none; overflow-x: auto; scrollbar-width: none;
+}
+.gf-tab {
+  position: relative; flex: none;
+  padding: 6px 6px 8px; border: 0; background: none; color: var(--muted); font-size: 12.5px;
+  font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.gf-tab:hover { color: var(--text); }
+.gf-tab.on { color: var(--text); border-bottom-color: var(--accent); }
+.gf-badge:not(:empty) {
+  display: inline-block; margin-left: 4px; padding: 0 5px; min-width: 16px;
+  border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+  font-size: 10.5px; line-height: 16px; text-align: center;
+}
+.gf-panel { flex: 1; overflow-y: auto; padding: 4px 14px 24px; min-height: 0; }
+.gf-sec {
+  margin: 18px 0 8px; padding-top: 12px; border-top: 1px solid var(--line);
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+}
+.gf-panel > .gf-sec:first-child { border-top: 0; padding-top: 4px; margin-top: 10px; }
+.gf-note { color: var(--muted); font-size: 12px; margin: 4px 0 10px; }
+.gf-ctrl { margin: 0 0 12px; }
+.gf-range { display: grid; grid-template-columns: minmax(0, 1fr) auto 64px; grid-template-areas: "l k n" "r r r"; align-items: center; gap: 4px 6px; }
+.gf-range > label { grid-area: l; color: var(--text); cursor: default; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gf-range > .gf-lock { grid-area: k; }
+.gf-range > .gf-num { grid-area: n; }
+.gf-range > input[type="range"] { grid-area: r; }
+.gf-num { width: 64px; min-height: 26px; padding: 2px 6px; text-align: right; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+.gf-num::-webkit-outer-spin-button, .gf-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.gf-lock {
+  display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0;
+  border: 0; border-radius: 6px; background: none; color: var(--muted); opacity: 0.5;
+}
+.gf-lock:hover { opacity: 1; background: var(--hover); }
+.gf-lock.on { opacity: 1; color: var(--accent); }
+.gf-field { display: grid; gap: 6px; }
+.gf-field > label { color: var(--text); }
+.gf-field > select { width: 100%; }
+.gf-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; }
+.gf-inline { display: flex; gap: 6px; align-items: center; }
+.gf-inline > select { flex: 1; }
+.gf-stack { display: grid; gap: 8px; margin-bottom: 12px; }
+.gf-btns { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.gf-wh { display: grid; grid-template-columns: auto 1fr auto 1fr auto; gap: 6px; align-items: center; }
+.gf-wh .gf-num { width: 100%; }
+.gf-swatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.gf-sw {
+  width: 26px; height: 26px; padding: 0; border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.15); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+.gf-sw.on, .gf-sw-custom.on { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gf-sw-none { background: linear-gradient(135deg, transparent 45%, var(--danger) 45%, var(--danger) 55%, transparent 55%), var(--panel-2); }
+.gf-sw-custom { width: 26px; height: 26px; }
+.gf-palette { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.gf-pal-item { position: relative; }
+.gf-pal-item input[type="color"] { width: 40px; height: 40px; border-radius: 10px; }
+.gf-pal-x {
+  position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; padding: 0;
+  border-radius: 50%; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted);
+  font-size: 12px; line-height: 15px; display: none;
+}
+.gf-pal-item:hover .gf-pal-x, .gf-pal-x:focus-visible { display: block; }
+.gf-pal-add { width: 40px; height: 40px; border-radius: 10px; border: 1px dashed var(--line-2); background: none; color: var(--muted); font-size: 18px; }
+.gf-pal-add:hover { color: var(--text); border-color: var(--text); }
+.gf-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.gf-chip { padding: 2px 8px; border: 1px solid var(--line-2); border-radius: 999px; background: none; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.gf-chip:hover { background: var(--hover); }
+.gf-chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.gf-contrast { margin: -4px 0 12px; font-size: 12px; }
+.gf-contrast.ok { color: var(--ok); }
+.gf-contrast.mid { color: var(--warn); }
+.gf-contrast.bad { color: var(--danger); }
+
+/* ---------- menu, modal, toast ---------- */
+.gf-menu-wrap { position: relative; }
+.gf-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 20;
+  min-width: 220px; padding: 6px;
+  background: var(--panel); border: 1px solid var(--line-2); border-radius: 10px; box-shadow: var(--shadow);
+  display: grid;
+}
+.gf-menu[hidden] { display: none; }
+.gf-menu button { text-align: left; padding: 7px 10px; border: 0; border-radius: 6px; background: none; }
+.gf-menu button:hover, .gf-menu button:focus-visible { background: var(--hover); outline: none; }
+.gf-menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.gf-modal {
+  width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 64px);
+  border: 1px solid var(--line-2); border-radius: 12px; padding: 18px;
+  background: var(--panel); color: var(--text); box-shadow: var(--shadow);
+}
+.gf-modal::backdrop { background: rgba(0, 0, 0, 0.45); }
+.gf-modal h3 { margin: 0 0 12px; font-size: 15px; }
+.gf-code {
+  margin: 0; padding: 12px; max-height: 50vh; overflow: auto;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius);
+  font: 12px/1.5 ui-monospace, "SF Mono", Consolas, monospace; white-space: pre;
+}
+.gf-modal-actions { justify-content: flex-end; margin: 14px 0 0; }
+.gf-toast {
+  position: fixed; left: 50%; bottom: 44px; transform: translate(-50%, 12px);
+  padding: 8px 14px; border-radius: 999px;
+  background: var(--text); color: var(--bg); font-weight: 500;
+  opacity: 0; pointer-events: none; transition: opacity 0.18s, transform 0.18s; z-index: 30;
+}
+.gf-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- embedded mode ---------- */
+.gf-embedded .gf-brand span { display: none; }
+
+/* ---------- narrow screens: stack panels under the canvas ---------- */
+@media (max-width: 960px) {
+  body { overflow: auto; }
+  .gf-app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 58vh auto auto auto;
+    grid-template-areas: "top" "stage" "right" "left" "status";
+    height: auto; min-height: 100vh;
+  }
+  .gf-top { flex-wrap: wrap; padding: 8px 12px; }
+  .gf-top-select { order: 10; flex: 1 1 100%; max-width: none; }
+  .gf-brand span { display: none; }
+  #gf-random span { display: none; }
+  .gf-right { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+  .gf-panel { overflow: visible; }
+  .gf-left { border-right: 0; border-top: 1px solid var(--line); overflow: visible; }
+  .gf-types { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+  .gf-stage-wrap { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+
+</style>
+</head>
+<body>
+  <div class="gf-app">
+    <header class="gf-top">
+      <div class="gf-brand">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" fill="var(--accent)"/><path d="M9.5 2v20M9.5 14.5H22M15.8 14.5V22" stroke="var(--accent-ink)" stroke-width="1.6" fill="none"/></svg>
+        <span>GridMaker</span>
+      </div>
+      <label class="gf-sr" for="gf-preset">Canvas size</label>
+      <select id="gf-preset" class="gf-top-select" title="Template size"></select>
+      <div class="gf-top-group gf-seg" role="group" aria-label="Canvas tool">
+        <button id="gf-tool-move" class="gf-icon-btn" title="Move tool (V): select, drag, resize; double-click to edit" aria-label="Move tool" aria-pressed="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 7-6 2-2 6z"/></svg></button>
+        <button id="gf-tool-cells" class="gf-icon-btn" title="Cells tool (C): click or box-select cells" aria-label="Cells tool" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 12h16M12 4v16"/><rect x="12" y="4" width="8" height="8" fill="currentColor" stroke="none" opacity="0.45"/></svg></button>
+      </div>
+      <div class="gf-top-group">
+        <button id="gf-undo" class="gf-icon-btn" title="Undo (Ctrl+Z)" aria-label="Undo"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
+        <button id="gf-redo" class="gf-icon-btn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
+        <button id="gf-random" class="gf-btn" title="Randomise unlocked grid values (R)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg><span>Randomise</span></button>
+      </div>
+      <div class="gf-spacer"></div>
+      <div class="gf-top-group">
+        <button id="gf-theme" class="gf-icon-btn" title="Light / dark" aria-label="Toggle light or dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 000 16z" fill="currentColor"/></svg></button>
+        <button id="gf-full" class="gf-icon-btn" title="Full screen" aria-label="Full screen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button>
+        <div class="gf-menu-wrap">
+          <button id="gf-export" class="gf-btn primary" aria-haspopup="menu" aria-expanded="false" title="Export (Ctrl+E)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>Export</span></button>
+          <div id="gf-export-menu" class="gf-menu" role="menu" hidden></div>
+        </div>
+      </div>
+    </header>
+
+    <aside class="gf-left" aria-label="Build">
+      <section>
+        <h3>Grid type</h3>
+        <div id="gf-types" class="gf-types"></div>
+      </section>
+      <section>
+        <h3>Templates</h3>
+        <div id="gf-templates" class="gf-templates"></div>
+      </section>
+      <section class="gf-layers-sec">
+        <div class="gf-sec-head">
+          <h3>Layers</h3>
+          <button id="gf-add-text" class="gf-btn small" title="Add text (T)">+ Text</button>
+        </div>
+        <p class="gf-hint">Top of the list sits on top. Drag to reorder.</p>
+        <ul id="gf-layers" class="gf-layers"></ul>
+      </section>
+    </aside>
+
+    <main id="gf-stage-wrap" class="gf-stage-wrap" aria-label="Canvas">
+      <nav id="gf-crumbs" class="gf-crumbs" aria-label="Nested canvas path" hidden></nav>
+      <div id="gf-stage" class="gf-stage">
+        <div id="gf-art" class="gf-art"></div>
+        <svg id="gf-overlay" class="gf-overlay" xmlns="http://www.w3.org/2000/svg" aria-label="Grid cells: click to select, drag to box-select"></svg>
+      </div>
+    </main>
+
+    <aside class="gf-right" aria-label="Parameters">
+      <nav id="gf-tabs" class="gf-tabs" role="tablist"></nav>
+      <div id="gf-panel" class="gf-panel" role="tabpanel"></div>
+    </aside>
+
+    <footer class="gf-status">
+      <span id="gf-status-text"></span>
+      <div class="gf-spacer"></div>
+      <label class="gf-status-toggle"><input id="gf-guides" type="checkbox" checked> Guides</label>
+      <button id="gf-zoom-out" class="gf-icon-btn" title="Zoom out (-)" aria-label="Zoom out"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+      <button id="gf-zoom-fit" class="gf-zoom-label" title="Fit to screen (0)"><span id="gf-zoom-label">100%</span></button>
+      <button id="gf-zoom-in" class="gf-icon-btn" title="Zoom in (+)" aria-label="Zoom in"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+    </footer>
+  </div>
+
+  <dialog id="gf-modal" class="gf-modal"></dialog>
+  <div id="gf-toast" class="gf-toast" role="status" aria-live="polite"></div>
+  <input id="gf-file-image" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif" hidden>
+  <input id="gf-file-font" type="file" accept=".ttf,.otf,.woff,.woff2" hidden>
+  <input id="gf-file-json" type="file" accept=".json,application/json" hidden>
+
+  <script>
+/* GridForge core: maths, progressions, colour and grid generators. No DOM access. */
+(function (G) {
+  'use strict';
+
+  const PHI = (1 + Math.sqrt(5)) / 2;
+  const TAU = Math.PI * 2;
+  const MAX_CELLS = 8000;
+  const rad = (d) => (d * Math.PI) / 180;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const n2 = (v) => Math.round(v * 100) / 100;
+  const sum = (a) => a.reduce((s, v) => s + v, 0);
+
+  /* ---------- random ---------- */
+  function rng(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  // Stable pseudo-random value in [0,1) for item i under a seed.
+  function hash01(seed, i) {
+    return rng((Math.imul(seed + 1, 2654435761) ^ Math.imul(i + 1, 40503)) >>> 0)();
+  }
+
+  /* ---------- progressions ---------- */
+  // Continuous Fibonacci: 1, 1, 2, 3, 5, 8 ... interpolated between integers.
+  function fib(x) {
+    const a = Math.floor(Math.max(0, x)), t = Math.max(0, x) - a;
+    let p = 1, q = 1;
+    for (let i = 0; i < a; i++) { const r = p + q; p = q; q = r; }
+    return p + (q - p) * t;
+  }
+
+  // Relative size at position t (0..1) of a run of `steps` items.
+  function prog(t, steps, mode, f) {
+    const n = Math.max(1, steps - 1), x = t * n;
+    switch (mode) {
+      case 'linear': return Math.max(0.05, 1 + (f - 1) * t);
+      case 'exponential': return Math.pow(f, x);
+      case 'fibonacci': return fib(f >= 1 ? x : n - x);
+      case 'mirror': return Math.pow(f, Math.min(x, n - x));
+      default: return 1;
+    }
+  }
+
+  function weights(n, mode, f) {
+    const w = [];
+    for (let i = 0; i < n; i++) w.push(prog(n > 1 ? i / (n - 1) : 0, n, mode, f));
+    return w;
+  }
+
+  /* ---------- colour ---------- */
+  function hexToRgb(hex) {
+    let s = String(hex || '').replace('#', '');
+    if (s.length === 3) s = s.split('').map((c) => c + c).join('');
+    const v = parseInt(s.slice(0, 6), 16);
+    return isNaN(v) ? [0, 0, 0] : [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+  }
+  function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map((v) => clamp(Math.round(v), 0, 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+  }
+  function mix(a, b, t) {
+    const A = hexToRgb(a), B = hexToRgb(b);
+    return rgbToHex(A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, A[2] + (B[2] - A[2]) * t);
+  }
+  function ramp(cols, t) {
+    if (!cols.length) return null;
+    if (cols.length === 1) return cols[0];
+    const x = clamp(t, 0, 1) * (cols.length - 1);
+    const i = Math.min(cols.length - 2, Math.floor(x));
+    return mix(cols[i], cols[i + 1], x - i);
+  }
+  function hexToHsl(hex) {
+    const [r, g, b] = hexToRgb(hex).map((v) => v / 255);
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    let hh = 0, s = 0;
+    if (mx !== mn) {
+      const d = mx - mn;
+      s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+      if (mx === r) hh = (g - b) / d + (g < b ? 6 : 0);
+      else if (mx === g) hh = (b - r) / d + 2;
+      else hh = (r - g) / d + 4;
+      hh *= 60;
+    }
+    return [hh, s * 100, l * 100];
+  }
+  function hslToHex(hh, s, l) {
+    s /= 100; l /= 100;
+    const k = (n) => (n + hh / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return rgbToHex(f(0) * 255, f(8) * 255, f(4) * 255);
+  }
+  function harmony(base, scheme) {
+    const [hh, s, l] = hexToHsl(base);
+    const at = (dh, ds = 0, dl = 0) => hslToHex((hh + dh + 360) % 360, clamp(s + ds, 0, 100), clamp(l + dl, 6, 94));
+    switch (scheme) {
+      case 'complementary': return [at(0, 0, -32), at(0), at(0, -12, 26), at(180), at(180, -18, 32)];
+      case 'analogous': return [at(-30), at(-15, 0, 10), at(0), at(15, 0, -10), at(30)];
+      case 'triadic': return [at(0), at(120), at(240), at(0, -30, 36), at(0, 0, -36)];
+      case 'split': return [at(0), at(150), at(210), at(0, -20, 36), at(0, -10, -36)];
+      default: return [at(0, 0, -36), at(0, 0, -18), at(0), at(0, -10, 18), at(0, -20, 36)];
+    }
+  }
+  function luminance(hex) {
+    const c = hexToRgb(hex).map((v) => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function contrast(a, b) {
+    const x = luminance(a), y = luminance(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  function bestContrast(pal, against) {
+    let best = pal[0] || '#000000', r = -1;
+    for (const c of pal) { const v = contrast(c, against); if (v > r) { r = v; best = c; } }
+    return best;
+  }
+  function darkLight(pal) {
+    const s = pal.slice().sort((a, b) => luminance(a) - luminance(b));
+    return [s[0] || '#000000', s[s.length - 1] || '#FFFFFF'];
+  }
+
+  /* ---------- geometry ---------- */
+  const rectPts = (x, y, w, hh) => [[x, y], [x + w, y], [x + w, y + hh], [x, y + hh]];
+  function bbox(pts) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of pts) {
+      if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0];
+      if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1];
+    }
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+  function centroid(pts) {
+    let x = 0, y = 0;
+    for (const p of pts) { x += p[0]; y += p[1]; }
+    return [x / pts.length, y / pts.length];
+  }
+  function signedArea(pts) {
+    let a = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], q = pts[(i + 1) % pts.length];
+      a += p[0] * q[1] - q[0] * p[1];
+    }
+    return a / 2;
+  }
+  function rotatePts(pts, cx, cy, deg) {
+    const a = rad(deg), c = Math.cos(a), s = Math.sin(a);
+    return pts.map(([x, y]) => [cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c]);
+  }
+  function hull(points) {
+    const P = points.map((p) => [p[0], p[1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    if (P.length < 3) return P;
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    for (const p of P) {
+      while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop();
+      lo.push(p);
+    }
+    for (let i = P.length - 1; i >= 0; i--) {
+      const p = P[i];
+      while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop();
+      up.push(p);
+    }
+    up.pop(); lo.pop();
+    return lo.concat(up);
+  }
+  // Shrink a polygon toward its centroid so a gap of `inset` px opens around it.
+  function insetPts(pts, inset) {
+    if (!inset) return pts;
+    const c = centroid(pts), b = bbox(pts), m = Math.min(b.w, b.h);
+    const s = m > 0 ? Math.max(0, 1 - (2 * inset) / m) : 0;
+    return pts.map((p) => [c[0] + (p[0] - c[0]) * s, c[1] + (p[1] - c[1]) * s]);
+  }
+  const pt = (p) => n2(p[0]) + ' ' + n2(p[1]);
+
+  // SVG path for a cell: optional inset, curved edges (-100 concave .. 100 convex) and rounded corners.
+  function pathFor(pts, o) {
+    const P = insetPts(pts, o.inset || 0), n = P.length;
+    if (o.smooth || (!o.curvature && !o.radius) || n < 3) return 'M' + P.map(pt).join('L') + 'Z';
+    const sg = signedArea(P) >= 0 ? 1 : -1, k = ((o.curvature || 0) / 100) * 0.45;
+    const S = [], E = [], Q = [];
+    for (let i = 0; i < n; i++) {
+      const a = P[i], b = P[(i + 1) % n];
+      const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+      const ux = dx / len, uy = dy / len, r = Math.min(o.radius || 0, len * 0.5);
+      S.push([a[0] + ux * r, a[1] + uy * r]);
+      E.push([b[0] - ux * r, b[1] - uy * r]);
+      const el = len - 2 * r;
+      Q.push([(S[i][0] + E[i][0]) / 2 + sg * uy * k * el, (S[i][1] + E[i][1]) / 2 - sg * ux * k * el]);
+    }
+    let d = 'M' + pt(S[0]);
+    for (let i = 0; i < n; i++) {
+      d += k ? 'Q' + pt(Q[i]) + ' ' + pt(E[i]) : 'L' + pt(E[i]);
+      if (o.radius) d += 'Q' + pt(P[(i + 1) % n]) + ' ' + pt(S[(i + 1) % n]);
+    }
+    return d + 'Z';
+  }
+
+  /* ---------- grid generators: each returns { cells, extras } ---------- */
+  function contentRect(cv) {
+    const m = Math.max(0, Math.min(cv.margin, cv.w / 2 - 1, cv.h / 2 - 1));
+    return { x: m, y: m, w: cv.w - 2 * m, h: cv.h - 2 * m };
+  }
+
+  function genModular(p, R) {
+    const cols = Math.max(1, Math.round(p.cols)), rows = Math.max(1, Math.round(p.rows));
+    const gx = cols > 1 ? Math.min(p.gutterX, (R.w * 0.9) / (cols - 1)) : 0;
+    const gy = rows > 1 ? Math.min(p.gutterY, (R.h * 0.9) / (rows - 1)) : 0;
+    const cw = weights(cols, p.progX, p.factorX), rh = weights(rows, p.progY, p.factorY);
+    const sw = sum(cw), sh = sum(rh), W = R.w - gx * (cols - 1), H = R.h - gy * (rows - 1);
+    const cells = [];
+    let y = R.y;
+    for (let r = 0; r < rows; r++) {
+      const hh = (H * rh[r]) / sh;
+      let x = R.x;
+      for (let c = 0; c < cols; c++) {
+        const ww = (W * cw[c]) / sw;
+        cells.push({ pts: rectPts(x, y, ww, hh), row: r, col: c });
+        x += ww + gx;
+      }
+      y += hh + gy;
+    }
+    return { cells, extras: [] };
+  }
+
+  // Quarter arc inside a cut piece; sides 0 left, 1 top, 2 right, 3 bottom (clockwise spiral).
+  function spiralArc(pc, k) {
+    const cx = [pc.x + pc.w, pc.x, pc.x, pc.x + pc.w][k];
+    const cy = [pc.y + pc.h, pc.y + pc.h, pc.y, pc.y][k];
+    const a0 = [Math.PI, 1.5 * Math.PI, 0, 0.5 * Math.PI][k];
+    const out = [];
+    for (let j = 0; j <= 18; j++) {
+      const a = a0 + (j / 18) * (Math.PI / 2);
+      out.push([cx + pc.w * Math.cos(a), cy + pc.h * Math.sin(a)]);
+    }
+    return out;
+  }
+
+  function genGolden(p, R) {
+    const ratio = Math.max(1.01, p.ratio), depth = Math.max(1, Math.round(p.depth));
+    let x = R.x, y = R.y, w = R.w, hh = R.h, k = ((Math.round(p.start) % 4) + 4) % 4;
+    const cells = [], spiral = [];
+    for (let i = 0; i < depth; i++) {
+      const land = w >= hh;
+      if (land !== (k % 2 === 0)) k = (k + 1) % 4; // left/right cuts need landscape, top/bottom need portrait
+      let pc;
+      if (k === 0) { const s = w / ratio; pc = { x, y, w: s, h: hh }; x += s; w -= s; }
+      else if (k === 2) { const s = w / ratio; pc = { x: x + w - s, y, w: s, h: hh }; w -= s; }
+      else if (k === 1) { const s = hh / ratio; pc = { x, y, w, h: s }; y += s; hh -= s; }
+      else { const s = hh / ratio; pc = { x, y: y + hh - s, w, h: s }; hh -= s; }
+      cells.push({ pts: rectPts(pc.x, pc.y, pc.w, pc.h), row: i, col: 0 });
+      if (p.spiral) spiral.push(...spiralArc(pc, k));
+      k = (k + 1) % 4;
+    }
+    cells.push({ pts: rectPts(x, y, w, hh), row: depth, col: 0 });
+    const extras = p.spiral ? [spiral] : [];
+    const cx = R.x + R.w / 2, cy = R.y + R.h / 2;
+    const flip = (pts) => pts.map(([px, py]) => [p.flipX ? 2 * cx - px : px, p.flipY ? 2 * cy - py : py]);
+    if (p.flipX || p.flipY) {
+      cells.forEach((c) => { c.pts = flip(c.pts); });
+      extras.forEach((e, i) => { extras[i] = flip(e); });
+    }
+    return { cells, extras };
+  }
+
+  function genRadial(p, R) {
+    const cx = R.x + (R.w * p.cx) / 100, cy = R.y + (R.h * p.cy) / 100;
+    const ro = (Math.min(R.w, R.h) / 2) * (p.scale / 100), ri = (ro * p.inner) / 100;
+    const rings = Math.max(1, Math.round(p.rings)), spokes = Math.max(1, Math.round(p.spokes));
+    const w = weights(rings, p.prog, p.factor), sw = sum(w);
+    const sweep = rad(clamp(p.sweep, 1, 360)), da = sweep / spokes, gap = p.gap || 0;
+    const full = spokes === 1 && p.sweep >= 360;
+    const cells = [];
+    let r0 = ri;
+    for (let k = 0; k < rings; k++) {
+      const r1 = r0 + ((ro - ri) * w[k]) / sw;
+      const a = r0 + gap / 2, b = r1 - gap / 2;
+      if (b > a + 0.5) {
+        for (let s = 0; s < spokes; s++) {
+          const base = rad(p.start) + rad(p.twist) * k + s * da;
+          const ag = full ? 0 : Math.min(da * 0.45, gap / 2 / Math.max((a + b) / 2, 1));
+          const a0 = base + ag, a1 = base + da - ag;
+          const steps = Math.max(2, Math.ceil((a1 - a0) / rad(4)));
+          const pts = [];
+          for (let j = 0; j <= steps; j++) {
+            const t = a0 + ((a1 - a0) * j) / steps;
+            pts.push([cx + b * Math.cos(t), cy + b * Math.sin(t)]);
+          }
+          if (a < 0.5) pts.push([cx, cy]);
+          else for (let j = steps; j >= 0; j--) {
+            const t = a0 + ((a1 - a0) * j) / steps;
+            pts.push([cx + a * Math.cos(t), cy + a * Math.sin(t)]);
+          }
+          cells.push({ pts, row: k, col: s, smooth: true });
+        }
+      }
+      r0 = r1;
+    }
+    return { cells, extras: [] };
+  }
+
+  function genPolygon(p, R) {
+    const s = Math.max(6, p.size);
+    const cx = R.x + R.w / 2 + (p.offsetX || 0), cy = R.y + R.h / 2 + (p.offsetY || 0);
+    const D = Math.hypot(R.w, R.h) / 2 + s * 2 + Math.hypot(p.offsetX || 0, p.offsetY || 0);
+    const cells = [];
+    const poly = (x, y, r, n, a0) => {
+      const out = [];
+      for (let k = 0; k < n; k++) { const a = a0 + (k * TAU) / n; out.push([x + r * Math.cos(a), y + r * Math.sin(a)]); }
+      return out;
+    };
+    if (p.shape === 'square' || p.shape === 'brick') {
+      const bw = s, bh = p.shape === 'brick' ? s / 2 : s;
+      const nx = Math.ceil(D / bw) + 1, ny = Math.ceil(D / bh) + 1;
+      for (let r = -ny; r < ny; r++) for (let c = -nx; c < nx; c++) {
+        const off = p.shape === 'brick' && r % 2 !== 0 ? bw / 2 : 0;
+        cells.push({ pts: rectPts(cx + c * bw + off, cy + r * bh, bw, bh), row: r, col: c });
+      }
+    } else if (p.shape === 'triangle') {
+      const th = (s * Math.sqrt(3)) / 2, ny = Math.ceil(D / th) + 1, nx = Math.ceil(D / (s / 2)) + 2;
+      for (let r = -ny; r < ny; r++) for (let c = -nx; c < nx; c++) {
+        const x = cx + (c * s) / 2, y = cy + r * th, up = ((r + c) % 2 + 2) % 2 === 0;
+        const pts = up ? [[x, y + th], [x + s / 2, y], [x + s, y + th]] : [[x, y], [x + s, y], [x + s / 2, y + th]];
+        cells.push({ pts, row: r, col: c });
+      }
+    } else if (p.shape === 'ngon') {
+      // any regular polygon on a square or staggered lattice; `size` = lattice spacing
+      const n = clamp(Math.round(p.sides || 5), 3, 48), r = (s / 2) * ((p.polyScale || 100) / 100), a0 = rad((p.spin || 0) - 90);
+      const stag = p.packing !== 'square', dy = stag ? (s * Math.sqrt(3)) / 2 : s;
+      const nx = Math.ceil(D / s) + 1, ny = Math.ceil(D / dy) + 1;
+      for (let row = -ny; row <= ny; row++) for (let c = -nx; c <= nx; c++) {
+        const x = cx + c * s + (stag && Math.abs(row) % 2 ? s / 2 : 0), y = cy + row * dy;
+        cells.push({ pts: poly(x, y, r, n, a0), row, col: c });
+      }
+    } else if (p.shape === 'octagon') {
+      const a = s / (1 + Math.SQRT2), Ro = a / (2 * Math.sin(Math.PI / 8)), q = a / Math.SQRT2;
+      const N = Math.ceil(D / s) + 1;
+      for (let j = -N; j <= N; j++) for (let i = -N; i <= N; i++) {
+        cells.push({ pts: poly(cx + i * s, cy + j * s, Ro, 8, Math.PI / 8), row: j * 2, col: i * 2 });
+        const x = cx + (i + 0.5) * s, y = cy + (j + 0.5) * s;
+        cells.push({ pts: [[x, y - q], [x + q, y], [x, y + q], [x - q, y]], row: j * 2 + 1, col: i * 2 + 1 });
+      }
+    } else {
+      // pointy-top hexagons, `size` = width across corners
+      const r = s / 2, w = Math.sqrt(3) * r, vs = 1.5 * r;
+      const ny = Math.ceil(D / vs) + 1, nx = Math.ceil(D / w) + 1;
+      for (let row = -ny; row <= ny; row++) for (let c = -nx; c <= nx; c++) {
+        const x = cx + c * w + (Math.abs(row) % 2 ? w / 2 : 0), y = cy + row * vs;
+        cells.push({ pts: poly(x, y, r, 6, -Math.PI / 2), row, col: c });
+      }
+    }
+    return { cells, extras: [] };
+  }
+
+  function genDiagonal(p, R) {
+    const A = rad(p.angleA), B = rad(p.angleB);
+    const u = [Math.cos(A) * p.s1, Math.sin(A) * p.s1];
+    let v = [Math.cos(B) * p.s2, Math.sin(B) * p.s2];
+    let det = u[0] * v[1] - u[1] * v[0];
+    if (Math.abs(det) < 1e-3 * p.s1 * p.s2) { v = [-u[1], u[0]]; det = u[0] * v[1] - u[1] * v[0]; }
+    const ox = R.x + R.w / 2 + (p.offsetX || 0), oy = R.y + R.h / 2 + (p.offsetY || 0);
+    const D = Math.hypot(R.w, R.h) / 2 + Math.max(p.s1, p.s2) + Math.hypot(p.offsetX || 0, p.offsetY || 0);
+    let i0 = Infinity, i1 = -Infinity, j0 = Infinity, j1 = -Infinity;
+    for (const [px, py] of [[-D, -D], [D, -D], [D, D], [-D, D]]) {
+      const i = (px * v[1] - v[0] * py) / det, j = (u[0] * py - u[1] * px) / det;
+      i0 = Math.min(i0, i); i1 = Math.max(i1, i); j0 = Math.min(j0, j); j1 = Math.max(j1, j);
+    }
+    i0 = Math.floor(i0); i1 = Math.ceil(i1); j0 = Math.floor(j0); j1 = Math.ceil(j1);
+    const cells = [];
+    if ((i1 - i0) * (j1 - j0) > 60000) return { cells, extras: [] };
+    const P = (i, j) => [ox + i * u[0] + j * v[0], oy + i * u[1] + j * v[1]];
+    for (let j = j0; j < j1; j++) for (let i = i0; i < i1; i++) {
+      cells.push({ pts: [P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)], row: j, col: i });
+    }
+    return { cells, extras: [] };
+  }
+
+  const GENERATORS = { modular: genModular, golden: genGolden, radial: genRadial, polygon: genPolygon, diagonal: genDiagonal };
+
+  // Build the full cell list for a state: generate, rotate, clip to the visible area, index and pre-compute paths.
+  function generate(st) {
+    const cv = st.canvas, g = st.grid, R = contentRect(cv);
+    const gen = GENERATORS[g.type] || genModular;
+    const out = gen(g.p[g.type], R);
+    let cells = out.cells, extras = out.extras;
+    if (g.rotation) {
+      const cx = R.x + R.w / 2, cy = R.y + R.h / 2;
+      cells.forEach((c) => { c.pts = rotatePts(c.pts, cx, cy, g.rotation); });
+      extras = extras.map((e) => rotatePts(e, cx, cy, g.rotation));
+    }
+    const clipR = cv.clip === 'canvas' ? { x: 0, y: 0, w: cv.w, h: cv.h } : R;
+    cells = cells.filter((c) => {
+      const b = bbox(c.pts);
+      return b.x < clipR.x + clipR.w && b.x + b.w > clipR.x && b.y < clipR.y + clipR.h && b.y + b.h > clipR.y;
+    });
+    const truncated = cells.length > MAX_CELLS;
+    if (truncated) cells = cells.slice(0, MAX_CELLS);
+    let minR = Infinity, minC = Infinity;
+    for (const c of cells) { minR = Math.min(minR, c.row); minC = Math.min(minC, c.col); }
+    const o = { inset: g.inset, curvature: g.curvature, radius: g.radius };
+    cells.forEach((c, i) => {
+      c.i = i;
+      c.row -= minR; c.col -= minC;
+      c.c = centroid(c.pts);
+      c.b = bbox(c.pts);
+      c.d = pathFor(c.pts, { inset: o.inset, curvature: o.curvature, radius: o.radius, smooth: c.smooth });
+    });
+    return { rect: R, clip: clipR, cells, extras, truncated };
+  }
+
+  /* ---------- pattern motifs, drawn at unit radius (box -1..1) ---------- */
+  function motif(p) {
+    const f = (v) => n2(v * 1000) / 1000;
+    switch (p.shape) {
+      case 'ring': return 'M-1 0A1 1 0 1 0 1 0A1 1 0 1 0 -1 0ZM-0.55 0A0.55 0.55 0 1 1 0.55 0A0.55 0.55 0 1 1 -0.55 0Z';
+      case 'polygon': {
+        const n = Math.max(3, Math.round(p.sides)), m = clamp((p.morph || 0) / 100, 0, 1), a0 = -Math.PI / 2, T = TAU / n;
+        const pts = [];
+        if (!m) for (let k = 0; k < n; k++) pts.push([Math.cos(a0 + k * T), Math.sin(a0 + k * T)]);
+        else for (let k = 0; k < 120; k++) {
+          const a = a0 + (k / 120) * TAU, ph = ((((a - a0) % T) + T) % T);
+          const rp = Math.cos(Math.PI / n) / Math.cos(ph - Math.PI / n), r = rp + (1 - rp) * m;
+          pts.push([r * Math.cos(a), r * Math.sin(a)]);
+        }
+        return 'M' + pts.map((q) => f(q[0]) + ' ' + f(q[1])).join('L') + 'Z';
+      }
+      case 'star': {
+        const n = Math.max(3, Math.round(p.sides)), ir = clamp((p.inner || 45) / 100, 0.05, 0.95), pts = [];
+        for (let k = 0; k < n * 2; k++) {
+          const a = -Math.PI / 2 + (k * Math.PI) / n, r = k % 2 ? ir : 1;
+          pts.push([r * Math.cos(a), r * Math.sin(a)]);
+        }
+        return 'M' + pts.map((q) => f(q[0]) + ' ' + f(q[1])).join('L') + 'Z';
+      }
+      case 'cross': { const t = 0.34; return `M${-t} -1L${t} -1L${t} ${-t}L1 ${-t}L1 ${t}L${t} ${t}L${t} 1L${-t} 1L${-t} ${t}L-1 ${t}L-1 ${-t}L${-t} ${-t}Z`; }
+      case 'leaf': return 'M-0.85 0.85Q-0.85 -0.85 0.85 -0.85Q0.85 0.85 -0.85 0.85Z';
+      case 'quarter': return 'M-1 -1L1 -1A2 2 0 0 1 -1 1Z';
+      case 'truchet': {
+        const ro = 1.175, ri = 0.825;
+        return `M${f(-1 + ro)} -1A${ro} ${ro} 0 0 1 -1 ${f(-1 + ro)}L-1 ${f(-1 + ri)}A${ri} ${ri} 0 0 0 ${f(-1 + ri)} -1Z` +
+          `M${f(1 - ro)} 1A${ro} ${ro} 0 0 1 1 ${f(1 - ro)}L1 ${f(1 - ri)}A${ri} ${ri} 0 0 0 ${f(1 - ri)} 1Z`;
+      }
+      case 'semicircle': return 'M-1 0.5A1 1 0 0 1 1 0.5Z';
+      case 'line': return 'M-1 -0.12L1 -0.12L1 0.12L-1 0.12Z';
+      default: return 'M-1 0A1 1 0 1 0 1 0A1 1 0 1 0 -1 0Z';
+    }
+  }
+
+  G.core = {
+    PHI, rad, clamp, n2, rng, hash01, prog, weights, fib,
+    hexToRgb, rgbToHex, mix, ramp, hexToHsl, hslToHex, harmony, luminance, contrast, bestContrast, darkLight,
+    bbox, centroid, hull, insetPts, pathFor, rotatePts, contentRect, generate, motif
+  };
+})(window.GridForge = window.GridForge || {});
+
+</script>
+  <script>
+/* GridMaker render: turns state + generated geometry into one SVG string (used by the editor and by every export). */
+(function (G) {
+  'use strict';
+  const C = G.core;
+  const n2 = C.n2;
+  const MAX_DEPTH = 3;
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // Colours are stored either as hex or as a live palette reference "p:<index>".
+  function resolve(c, pal) {
+    if (c == null || c === '') return null;
+    if (typeof c === 'string' && c.slice(0, 2) === 'p:') {
+      if (!pal.length) return null;
+      const i = +c.slice(2);
+      return pal[((i % pal.length) + pal.length) % pal.length];
+    }
+    return c;
+  }
+  const famOf = (font) => `'${String(font).replace(/'/g, '')}', ${/Mono/.test(font) ? 'monospace' : /Serif|Display|Fraunces|Lora|Playfair/.test(font) ? 'serif' : 'sans-serif'}`;
+  const moved = (fx) => !!(fx && (fx.dx || fx.dy));
+  const shift = (fx) => `translate(${n2(fx.dx || 0)} ${n2(fx.dy || 0)})`;
+
+  // Returns cell -> fill colour (or null) following the palette mode and per-cell overrides.
+  function fillFn(st, geo) {
+    const P = st.palette, pal = P.colors, n = pal.length, R = geo.rect;
+    const cx = R.x + R.w / 2, cy = R.y + R.h / 2, maxD = Math.hypot(R.w, R.h) / 2 || 1;
+    return (cell) => {
+      const fx = st.cells[cell.i];
+      if (fx && fx.color) return resolve(fx.color, pal);
+      if (!n || P.mode === 'none') return null;
+      if (P.empty > 0 && C.hash01(P.seed + 101, cell.i) < P.empty / 100) return null;
+      switch (P.mode) {
+        case 'random': return pal[Math.floor(C.hash01(P.seed, cell.i) * n)];
+        case 'row': return pal[cell.row % n];
+        case 'column': return pal[cell.col % n];
+        case 'checker': return pal[(cell.row + cell.col) % n];
+        case 'gradient': return C.ramp(pal, ((cell.c[0] - R.x) / R.w + (cell.c[1] - R.y) / R.h) / 2);
+        case 'radial': return C.ramp(pal, Math.hypot(cell.c[0] - cx, cell.c[1] - cy) / maxD);
+        default: return pal[cell.i % n];
+      }
+    };
+  }
+
+  function imageTag(href, b, o) {
+    const z = o.zoom || 1, w = b.w * z, h = b.h * z;
+    const x = b.x + (b.w - w) / 2 + ((o.panX || 0) / 100) * b.w;
+    const y = b.y + (b.h - h) / 2 + ((o.panY || 0) / 100) * b.h;
+    const f = o.filter ? ` filter="url(#${o.filter})"` : '';
+    return `<image xlink:href="${href}" x="${n2(x)}" y="${n2(y)}" width="${n2(w)}" height="${n2(h)}" preserveAspectRatio="xMidYMid ${o.fit === 'meet' ? 'meet' : 'slice'}"${f}/>`;
+  }
+
+  function filterDef(ctx, kind, key) {
+    if (kind !== 'grey' && kind !== 'duotone') return null;
+    const id = `${ctx.u}-f-${key}`;
+    if (kind === 'grey') {
+      ctx.defs.push(`<filter id="${id}" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/></filter>`);
+    } else {
+      const [a, b] = C.darkLight(ctx.pal).map((c) => C.hexToRgb(c).map((v) => n2(v / 255)));
+      const lum = '0.299 0.587 0.114 0 0 ';
+      ctx.defs.push(`<filter id="${id}" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="${lum}${lum}${lum}0 0 0 1 0"/>` +
+        `<feComponentTransfer><feFuncR type="table" tableValues="${a[0]} ${b[0]}"/><feFuncG type="table" tableValues="${a[1]} ${b[1]}"/><feFuncB type="table" tableValues="${a[2]} ${b[2]}"/></feComponentTransfer></filter>`);
+    }
+    return id;
+  }
+
+  // Outline of a group: either the hull of its cells (one merged block) or the cells themselves.
+  function groupGeom(g, geo, st) {
+    const mem = g.cells.filter((i) => i < geo.cells.length).map((i) => geo.cells[i]);
+    if (!mem.length) return null;
+    const pts = [];
+    for (const c of mem) for (const q of C.insetPts(c.pts, st.grid.inset)) pts.push(q);
+    const d = g.shape === 'cells' ? mem.map((c) => c.d).join('') : C.pathFor(C.hull(pts), { radius: st.grid.radius, curvature: 0 });
+    return { d, b: C.bbox(pts), mem };
+  }
+
+  // A cell's own sub-canvas: a complete nested design laid out in the cell's bounding box.
+  function subCanvas(ctx, c, sub) {
+    if (ctx.depth >= MAX_DEPTH || !sub || !sub.grid) return '';
+    const s2 = Object.assign({}, sub, { canvas: Object.assign({}, sub.canvas, { w: Math.max(1, c.b.w), h: Math.max(1, c.b.h) }) });
+    const inner = buildInner(s2, C.generate(s2), ctx.assets, `${ctx.u}s${c.i}`, {}, ctx.depth + 1);
+    ctx.defs.push(...inner.defs);
+    const bg = s2.canvas.bgOn ? `<rect width="${n2(c.b.w)}" height="${n2(c.b.h)}" fill="${resolve(s2.canvas.bg, s2.palette.colors) || '#FFFFFF'}"/>` : '';
+    return `<g transform="translate(${n2(c.b.x)} ${n2(c.b.y)})">${bg}${inner.body}</g>`;
+  }
+
+  function layerFills(ctx) {
+    const { st, geo } = ctx;
+    let out = '';
+    for (const c of geo.cells) {
+      const fx = st.cells[c.i];
+      if ((fx && fx.hidden) || ctx.grouped[c.i]) continue;
+      const col = ctx.fill(c);
+      const href = fx && fx.image && ctx.assets.images[fx.image];
+      const sub = fx && fx.sub;
+      let s = '';
+      if (href || sub) {
+        const id = `${ctx.u}-c${c.i}`;
+        ctx.defs.push(`<clipPath id="${id}"><path d="${c.d}"/></clipPath>`);
+        s = `<g clip-path="url(#${id})">${col ? `<path d="${c.d}" fill="${col}"/>` : ''}${href ? imageTag(href, c.b, { fit: fx.fit }) : ''}${sub ? subCanvas(ctx, c, sub) : ''}</g>`;
+      } else if (col) s = `<path d="${c.d}" fill="${col}"/>`;
+      if (s && moved(fx)) s = `<g transform="${shift(fx)}">${s}</g>`;
+      out += s;
+    }
+    const op = st.palette.opacity;
+    return out && op < 1 ? `<g opacity="${op}">${out}</g>` : out;
+  }
+
+  function layerGroup(ctx, g) {
+    const gg = groupGeom(g, ctx.geo, ctx.st);
+    if (!gg) return '';
+    const id = `${ctx.u}-g-${g.id}`;
+    let inner = '';
+    const col = resolve(g.color, ctx.pal);
+    if (col) inner += `<path d="${gg.d}" fill="${col}"/>`;
+    const href = g.image && ctx.assets.images[g.image];
+    // a group's sub-canvas spans the group's bounding box and shows through its outline (hull or cells)
+    const sub = g.sub ? subCanvas(ctx, { i: g.id, b: gg.b }, g.sub) : '';
+    if (href || sub) {
+      ctx.defs.push(`<clipPath id="${id}"><path d="${gg.d}"/></clipPath>`);
+      const filter = href && filterDef(ctx, g.filter, g.id);
+      inner += `<g clip-path="url(#${id})">${href ? imageTag(href, gg.b, { fit: g.fit, zoom: g.zoom, panX: g.panX, panY: g.panY, filter }) : ''}${sub}</g>`;
+    }
+    if (g.outline) {
+      const L = ctx.st.lines;
+      inner += `<path d="${gg.d}" fill="none" stroke="${resolve(L.color, ctx.pal) || '#000'}" stroke-width="${Math.max(1, L.width)}"/>`;
+    }
+    if (!inner) return '';
+    const s = g.scale || 1, ox = g.offsetX || 0, oy = g.offsetY || 0, rot = g.rotate || 0;
+    if (!ox && !oy && s === 1 && !rot) return inner;
+    const cx = gg.b.x + gg.b.w / 2, cy = gg.b.y + gg.b.h / 2;
+    return `<g transform="translate(${n2(ox + cx)} ${n2(oy + cy)}) rotate(${rot}) scale(${s}) translate(${n2(-cx)} ${n2(-cy)})">${inner}</g>`;
+  }
+
+  // Cells that hold their own sub-canvas are skipped: their content replaces the parent pattern.
+  function patternTargets(st, geo) {
+    const p = st.pattern, keep = new Set(p.cells || []), inSub = new Set();
+    for (const g of st.groups) if (g.sub) for (const i of g.cells) inSub.add(i);
+    return geo.cells.filter((c) => {
+      const fx = st.cells[c.i];
+      if ((fx && (fx.hidden || fx.sub)) || inSub.has(c.i)) return false;
+      switch (p.target) {
+        case 'odd': return c.i % 2 === 1;
+        case 'even': return c.i % 2 === 0;
+        case 'checker': return (c.row + c.col) % 2 === 0;
+        case 'nth': return c.i % Math.max(2, Math.round(p.nth)) === 0;
+        case 'random': return C.hash01(p.seed + 7, c.i) < p.pct / 100;
+        case 'cells': return keep.has(c.i);
+        default: return true;
+      }
+    });
+  }
+
+  function textTokens(p) {
+    const s = String(p.text || '').replace(/\s*\n\s*/g, ' ');
+    if (p.textMode === 'letters') return [...s.replace(/\s+/g, '')];
+    if (p.textMode === 'words') return s.split(/\s+/).filter(Boolean);
+    return s.trim() ? [s.trim()] : [];
+  }
+
+  function layerPattern(ctx) {
+    const { st, geo } = ctx, p = st.pattern, pal = ctx.pal, n = pal.length;
+    const isImg = p.shape === 'image', isText = p.shape === 'text';
+    if (!p.on || (!n && !isImg)) return '';
+    const imgs = isImg ? (p.images || []).filter((id) => ctx.assets.images[id]) : [];
+    const words = isText ? textTokens(p) : [];
+    if ((isImg && !imgs.length) || (isText && !words.length)) return '';
+    const T = patternTargets(st, geo);
+    if (!T.length) return '';
+    const unit = isImg || isText ? '' : C.motif(p), R = geo.rect;
+    const cx = R.x + R.w / 2, cy = R.y + R.h / 2, maxD = Math.hypot(R.w, R.h) / 2 || 1;
+    let maxRow = 0, maxCol = 0;
+    for (const c of T) { maxRow = Math.max(maxRow, c.row); maxCol = Math.max(maxCol, c.col); }
+    const vals = T.map((c, k) => {
+      let t, steps;
+      if (p.progBy === 'row') { t = maxRow ? c.row / maxRow : 0; steps = maxRow + 1; }
+      else if (p.progBy === 'col') { t = maxCol ? c.col / maxCol : 0; steps = maxCol + 1; }
+      else if (p.progBy === 'distance') { t = Math.min(1, Math.hypot(c.c[0] - cx, c.c[1] - cy) / maxD); steps = 8; }
+      else { t = T.length > 1 ? k / (T.length - 1) : 0; steps = T.length; }
+      return C.prog(t, steps, p.prog, p.factor);
+    });
+    const vmax = Math.max(...vals) || 1;
+    const fam = isText ? esc(famOf(p.font || 'Inter')) : '';
+    let out = '';
+    T.forEach((c, k) => {
+      const r = (Math.min(c.b.w, c.b.h) / 2) * (p.size / 100) * (vals[k] / vmax);
+      if (r < 0.2) return;
+      const fx = st.cells[c.i], x = c.c[0] + ((fx && fx.dx) || 0), y = c.c[1] + ((fx && fx.dy) || 0);
+      const rot = p.rotate + k * p.rotStep + (p.rot90 ? Math.floor(C.hash01(p.seed, c.i) * 4) * 90 : 0);
+      const flip = p.flipAlt && k % 2;
+      let col = null;
+      if (!isImg) {
+        if (p.color === 'single') col = pal[p.colorIndex % n];
+        else if (p.color === 'contrast') col = C.bestContrast(pal, ctx.fill(c) || resolve(st.canvas.bg, pal) || '#FFFFFF');
+        else col = pal[(p.colorIndex + k * p.colorStep) % n];
+      }
+      const tr = `translate(${n2(x)} ${n2(y)}) rotate(${n2(rot)})`;
+      let s;
+      if (isImg) {
+        const pick = p.imgOrder === 'random' ? Math.floor(C.hash01(p.seed + 3, c.i) * imgs.length) : k % imgs.length;
+        s = `<image xlink:href="${ctx.assets.images[imgs[pick]]}" x="${n2(-r)}" y="${n2(-r)}" width="${n2(2 * r)}" height="${n2(2 * r)}" preserveAspectRatio="xMidYMid ${p.imgFit === 'slice' ? 'slice' : 'meet'}" transform="${tr}${flip ? ' scale(-1 1)' : ''}"/>`;
+      } else if (isText) {
+        const w = words[k % words.length], fs = 2 * r * Math.min(1, 1 / (0.62 * Math.max(1, [...w].length)));
+        const paint = p.style === 'outline' ? `fill="none" stroke="${col}" stroke-width="${p.strokeW}"` : `fill="${col}"`;
+        s = `<text x="0" y="0" transform="${tr}${flip ? ' scale(-1 1)' : ''}" font-family="${fam}" font-size="${n2(fs)}" font-weight="${p.weight || 700}" text-anchor="middle" dominant-baseline="central" ${paint}>${esc(w)}</text>`;
+      } else {
+        const paint = p.style === 'outline'
+          ? `fill="none" stroke="${col}" stroke-width="${n2((p.strokeW / r) * 1000) / 1000}"`
+          : `fill="${col}"`;
+        s = `<path d="${unit}" fill-rule="evenodd" transform="${tr} scale(${n2(flip ? -r : r)} ${n2(r)})" ${paint}/>`;
+      }
+      if (p.clipCell) {
+        const id = `${ctx.u}-pc${c.i}`;
+        ctx.defs.push(`<clipPath id="${id}"><path d="${c.d}"/></clipPath>`);
+        s = moved(fx) ? `<g transform="${shift(fx)}"><g clip-path="url(#${id})"><g transform="translate(${n2(-fx.dx || 0)} ${n2(-fx.dy || 0)})">${s}</g></g></g>` : `<g clip-path="url(#${id})">${s}</g>`;
+      }
+      out += s;
+    });
+    return out;
+  }
+
+  function layerLines(ctx, force) {
+    const { st, geo } = ctx, L = st.lines;
+    if (!force && (!L.show || L.width <= 0)) return '';
+    let d = '', extra = '';
+    for (const c of geo.cells) {
+      const fx = st.cells[c.i];
+      if (fx && fx.hidden) continue;
+      if (moved(fx)) extra += `<path d="${c.d}" transform="${shift(fx)}"/>`;
+      else d += c.d;
+    }
+    for (const e of geo.extras) if (e.length) d += 'M' + e.map((q) => n2(q[0]) + ' ' + n2(q[1])).join('L');
+    if (!d && !extra) return '';
+    return `<g fill="none" stroke="${resolve(L.color, ctx.pal) || '#000'}" stroke-width="${force ? Math.max(1, L.width) : L.width}" stroke-linejoin="round" stroke-linecap="round">${d ? `<path d="${d}"/>` : ''}${extra}</g>`;
+  }
+
+  function layerText(ctx, t) {
+    const cv = ctx.st.canvas, x = (cv.w * t.x) / 100, y = (cv.h * t.y) / 100;
+    const lines = String(t.upper ? t.text.toUpperCase() : t.text).split('\n');
+    const col = resolve(t.color, ctx.pal) || '#000000';
+    const base = y + t.size * 0.8;
+    const spans = lines.map((ln, i) => `<tspan x="${n2(x)}"${i ? ` dy="${n2(t.size * t.lh)}"` : ''}>${ln ? esc(ln) : '&#160;'}</tspan>`).join('');
+    const rot = t.rotate ? ` transform="rotate(${t.rotate} ${n2(x)} ${n2(y)})"` : '';
+    return `<text x="${n2(x)}" y="${n2(base)}" font-family="${esc(famOf(t.font))}" font-size="${t.size}" font-weight="${t.weight}" fill="${col}" text-anchor="${t.anchor}" letter-spacing="${t.ls}"${rot}>${spans}</text>`;
+  }
+
+  // Layers of one design (the main canvas or a cell's sub-canvas) without the outer <svg>.
+  function buildInner(st, geo, assets, u, opt, depth) {
+    const pal = st.palette.colors;
+    const ctx = { st, geo, assets: assets || { images: {} }, defs: [], u, pal, fill: fillFn(st, geo), grouped: {}, depth: depth || 0 };
+    for (const g of st.groups) for (const i of g.cells) ctx.grouped[i] = g.id;
+    const cr = geo.clip;
+    ctx.defs.push(`<clipPath id="${u}-clip"><rect x="${n2(cr.x)}" y="${n2(cr.y)}" width="${n2(cr.w)}" height="${n2(cr.h)}"/></clipPath>`);
+    const body = [];
+    if (opt.guidesOnly) {
+      const R = geo.rect;
+      body.push(`<rect x="${n2(R.x)}" y="${n2(R.y)}" width="${n2(R.w)}" height="${n2(R.h)}" fill="none" stroke="#FF3B7F" stroke-width="1" stroke-dasharray="8 6"/>`);
+      body.push(`<g clip-path="url(#${u}-clip)">${layerLines(ctx, true)}</g>`);
+    } else {
+      for (const L of st.layers) {
+        if (!L.visible) continue;
+        let inner = '';
+        if (L.kind === 'fills') inner = layerFills(ctx);
+        else if (L.kind === 'lines') inner = layerLines(ctx);
+        else if (L.kind === 'pattern') inner = layerPattern(ctx);
+        else if (L.kind === 'group') { const g = st.groups.find((x) => x.id === L.id); if (g) inner = layerGroup(ctx, g); }
+        else if (L.kind === 'text') { const t = st.texts.find((x) => x.id === L.id); if (t) inner = layerText(ctx, t); }
+        if (!inner) continue;
+        const clip = L.kind === 'text' || L.kind === 'group' ? '' : ` clip-path="url(#${u}-clip)"`;
+        const op = L.opacity < 1 ? ` opacity="${L.opacity}"` : '';
+        body.push(`<g data-layer="${esc(L.id)}"${clip}${op}>${inner}</g>`);
+      }
+    }
+    return { defs: ctx.defs, body: body.join('') };
+  }
+
+  function build(st, geo, assets, opt) {
+    opt = opt || {};
+    const cv = st.canvas, u = opt.uid || 'gf', pal = st.palette.colors;
+    const inner = buildInner(st, geo, assets, u, opt, 0);
+    let bg = '';
+    if (!opt.guidesOnly) {
+      if (cv.bgOn !== false) bg = `<rect width="${cv.w}" height="${cv.h}" fill="${resolve(cv.bg, pal) || '#FFFFFF'}"/>`;
+      else if (opt.backdrop) bg = `<rect width="${cv.w}" height="${cv.h}" fill="${opt.backdrop}"/>`;
+    }
+    const style = opt.fontCSS ? `<style>${opt.fontCSS}</style>` : '';
+    return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${cv.w} ${cv.h}" width="${cv.w}" height="${cv.h}">${style}<defs>${inner.defs.join('')}</defs>${bg}${inner.body}</svg>`;
+  }
+
+  G.render = { build, resolve, fillFn, groupGeom, esc, MAX_DEPTH };
+})(window.GridForge = window.GridForge || {});
+
+</script>
+  <script>
+/* GridForge app: state, history, panels, canvas interaction, export and the embed (postMessage) API. */
+(function (G) {
+  'use strict';
+  const C = G.core, RD = G.render;
+
+  /* ---------- helpers ---------- */
+  const $ = (s, el) => (el || document).querySelector(s);
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    if (attrs) for (const k in attrs) {
+      const v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k === 'html') el.innerHTML = v;
+      else if (k.slice(0, 2) === 'on' && typeof v === 'function') el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+    return el;
+  }
+  const getP = (o, path) => path.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
+  function setP(o, path, v) {
+    const ks = path.split('.'), last = ks.pop();
+    ks.reduce((a, k) => a[k], o)[last] = v;
+  }
+  const uid = (p) => p + Math.random().toString(36).slice(2, 8);
+  const clamp = C.clamp;
+  const fmt = (v) => +(+v).toFixed(3);
+  const escH = RD.esc;
+
+  const ICON_PATHS = {
+    undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/>',
+    redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/>',
+    dice: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
+    minus: '<path d="M5 12h14"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    theme: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 000 16z" fill="currentColor"/>',
+    download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+    expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',
+    eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    eyeOff: '<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0112 5c6.5 0 10 7 10 7a17 17 0 01-3.2 4.1M6.1 6.1A17 17 0 002 12s3.5 7 10 7a9.8 9.8 0 005.2-1.5"/>',
+    up: '<path d="M6 15l6-6 6 6"/>',
+    down: '<path d="M6 9l6 6 6-6"/>',
+    trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
+    unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 017.5-2"/>',
+    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>',
+    text: '<path d="M5 6V4h14v2M12 4v16M9 20h6"/>',
+    grid: '<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 12h16M12 4v16"/>',
+    group: '<rect x="3" y="3" width="11" height="11" rx="1.5"/><rect x="10" y="10" width="11" height="11" rx="1.5"/>',
+    shapes: '<circle cx="8" cy="8" r="4.5"/><path d="M14 20l4-8 4 8z"/><rect x="3" y="14" width="7" height="7"/>'
+  };
+  const icon = (n) => `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[n] || ''}</svg>`;
+
+  /* ---------- catalogues ---------- */
+  const PRESETS = [
+    ['ig-portrait', 'Instagram portrait 1080×1350', 1080, 1350],
+    ['ig-square', 'Instagram square 1080×1080', 1080, 1080],
+    ['story', 'Story / Reel 1080×1920', 1080, 1920],
+    ['yt', 'YouTube thumbnail 1280×720', 1280, 720],
+    ['web-1440', 'Web 1440×900', 1440, 900],
+    ['web-1920', 'Web 1920×1080', 1920, 1080],
+    ['a4', 'A4 @150 dpi', 1240, 1754],
+    ['a3', 'A3 @150 dpi', 1754, 2480],
+    ['letter', 'US Letter @150 dpi', 1275, 1650],
+    ['poster', 'Poster 18×24 in @100 dpi', 1800, 2400],
+    ['card', 'Business card @300 dpi', 1050, 600],
+    ['custom', 'Custom size', 0, 0]
+  ];
+  const PALETTES = [
+    { name: 'Editorial', colors: ['#1B1B1B', '#E2583E', '#F2B33D', '#2F5D8A', '#9DB8A0', '#EDE6D8'] },
+    { name: 'Bauhaus', colors: ['#111111', '#D92B2B', '#F2C230', '#1F4E9C', '#F4F1EA'] },
+    { name: 'Ocean', colors: ['#03045E', '#0077B6', '#00B4D8', '#90E0EF', '#CAF0F8'] },
+    { name: 'Terracotta', colors: ['#264653', '#2A9D8F', '#E9C46A', '#F4A261', '#E76F51'] },
+    { name: 'Night bloom', colors: ['#0F1020', '#3D2C8D', '#916BBF', '#C996CC', '#FFD6A5', '#FF8FAB'] },
+    { name: 'Pop', colors: ['#14213D', '#FCA311', '#E5E5E5', '#2A9D8F', '#E76F51', '#FFFFFF'] },
+    { name: 'Riso', colors: ['#FF48B0', '#0078BF', '#FFE800', '#00A95C', '#F7F3EA'] },
+    { name: 'Forest', colors: ['#1B4332', '#2D6A4F', '#52B788', '#B7E4C7', '#F1FAEE'] },
+    { name: 'Pastel', colors: ['#FDE2E4', '#FAD2E1', '#E2ECE9', '#BEE1E6', '#CDDAFD', '#FFF1E6'] },
+    { name: 'Mono', colors: ['#111111', '#444444', '#888888', '#CCCCCC', '#F2F2F2'] }
+  ];
+  const FONTS = [
+    ['Inter', '300;400;500;600;700;800;900'], ['Space Grotesk', '300;400;500;600;700'], ['Syne', '400;500;600;700;800'],
+    ['Montserrat', '300;400;500;600;700;800;900'], ['Poppins', '300;400;500;600;700;800;900'], ['Rubik', '300;400;500;600;700;800;900'],
+    ['Unbounded', '300;400;500;600;700;800;900'], ['Archivo Black', '400'], ['Bebas Neue', '400'], ['Anton', '400'],
+    ['Fraunces', '300;400;500;600;700;800;900'], ['Playfair Display', '400;500;600;700;800;900'], ['DM Serif Display', '400'],
+    ['Instrument Serif', '400'], ['Lora', '400;500;600;700'], ['IBM Plex Mono', '300;400;500;600;700']
+  ];
+  const GRID_TYPES = [
+    { id: 'modular', name: 'Column / modular', svg: '<rect x="4" y="4" width="32" height="32" rx="2"/><path d="M15 4v32M25 4v32M4 15h32M4 25h32"/>' },
+    { id: 'golden', name: 'Golden ratio', svg: '<rect x="4" y="9" width="32" height="20"/><path d="M24 9v20M24 21h12M30 21v8"/><path d="M4 29A20 20 0 0 1 24 9A12 12 0 0 1 36 21"/>' },
+    { id: 'radial', name: 'Radial', svg: '<circle cx="20" cy="20" r="16"/><circle cx="20" cy="20" r="10"/><circle cx="20" cy="20" r="4"/><path d="M20 4v32M4 20h32M8.7 8.7l22.6 22.6M31.3 8.7L8.7 31.3"/>' },
+    { id: 'polygon', name: 'Polygon tiling', svg: '<path d="M13 5l7 4v8l-7 4-7-4V9zM27 5l7 4v8l-7 4-7-4V9zM20 17l7 4v8l-7 4-7-4v-8z"/>' },
+    { id: 'diagonal', name: 'Diagonal / angled', svg: '<path d="M4 20L20 4l16 16-16 16zM12 12l16 16M28 12L12 28"/>' }
+  ];
+  const PROG_OPTS = [['equal', 'Equal'], ['linear', 'Linear'], ['exponential', 'Exponential'], ['fibonacci', 'Fibonacci'], ['mirror', 'Mirror (ping-pong)']];
+
+  /* ---------- state ---------- */
+  function defaults() {
+    return {
+      v: 1,
+      canvas: { preset: 'ig-portrait', w: 1080, h: 1350, margin: 64, bg: '#EDE6D8', bgOn: true, clip: 'content', unit: 'px', dpi: 300, lockRatio: false },
+      grid: {
+        type: 'golden', rotation: 0, inset: 0, curvature: 0, radius: 0,
+        p: {
+          modular: { cols: 4, rows: 5, gutterX: 16, gutterY: 16, link: true, progX: 'equal', factorX: 1.5, progY: 'equal', factorY: 1.5 },
+          golden: { ratio: 1.618, depth: 7, start: 0, flipX: false, flipY: false, spiral: true },
+          radial: { rings: 6, spokes: 12, inner: 10, scale: 100, cx: 50, cy: 50, start: -90, sweep: 360, twist: 0, gap: 6, prog: 'equal', factor: 1.3 },
+          polygon: { shape: 'hex', size: 120, offsetX: 0, offsetY: 0, sides: 5, packing: 'staggered', spin: 0, polyScale: 100 },
+          diagonal: { angleA: 30, angleB: 150, s1: 110, s2: 110, offsetX: 0, offsetY: 0 }
+        }
+      },
+      lines: { show: true, color: '#1B1B1B', width: 2 },
+      palette: { colors: PALETTES[0].colors.slice(), mode: 'sequential', seed: 7, empty: 0, opacity: 1 },
+      pattern: {
+        on: false, shape: 'circle', sides: 6, inner: 45, morph: 0, target: 'all', nth: 2, pct: 50, cells: [],
+        size: 70, rotate: 0, rotStep: 0, rot90: false, prog: 'equal', factor: 1.4, progBy: 'index',
+        color: 'step', colorIndex: 1, colorStep: 1, style: 'fill', strokeW: 3, flipAlt: false, seed: 11,
+        images: [], imgFit: 'meet', imgOrder: 'sequence', text: 'GRID', textMode: 'letters', font: 'Inter', weight: 700, clipCell: false
+      },
+      cells: {}, groups: [], texts: [],
+      layers: [
+        { id: 'fills', kind: 'fills', visible: true, opacity: 1 },
+        { id: 'lines', kind: 'lines', visible: true, opacity: 1 },
+        { id: 'pattern', kind: 'pattern', visible: true, opacity: 1 }
+      ],
+      locks: {}
+    };
+  }
+  function newText(over) {
+    return Object.assign({ id: uid('t'), text: 'Headline', font: 'Inter', weight: 700, size: 96, color: 'p:0', x: 8, y: 8, anchor: 'start', ls: 0, lh: 1.05, rotate: 0, upper: false }, over);
+  }
+  function newGroup(s, over) {
+    return Object.assign({
+      id: uid('g'), name: 'Group ' + (s.groups.length + 1), cells: [], shape: 'merged', color: null, image: null,
+      fit: 'slice', zoom: 1, panX: 0, panY: 0, filter: 'none', outline: false, offsetX: 0, offsetY: 0, scale: 1, rotate: 0
+    }, over);
+  }
+  function addText(s, t) { s.texts.push(t); s.layers.push({ id: t.id, kind: 'text', visible: true, opacity: 1 }); return t; }
+  function addGroup(s, g) {
+    s.groups.push(g);
+    const i = s.layers.findIndex((l) => l.kind === 'text');
+    s.layers.splice(i < 0 ? s.layers.length : i, 0, { id: g.id, kind: 'group', visible: true, opacity: 1 });
+    return g;
+  }
+  function setPreset(s, id) {
+    const p = PRESETS.find((x) => x[0] === id);
+    if (!p || !p[2]) return;
+    s.canvas.preset = id; s.canvas.w = p[2]; s.canvas.h = p[3];
+  }
+
+  const TEMPLATES = [
+    { id: 'golden', name: 'Golden poster', make: (s) => {
+      s.grid.p.golden.depth = 8; s.lines.width = 3;
+      addText(s, newText({ text: 'Golden\nratio', font: 'Fraunces', weight: 700, size: 150, color: 'p:5', x: 10, y: 9, lh: 0.95 }));
+    } },
+    { id: 'bento', name: 'Bento collage', make: (s) => {
+      setPreset(s, 'ig-square'); s.canvas.margin = 48; s.canvas.bg = '#F1EEE8';
+      s.grid.type = 'modular'; Object.assign(s.grid.p.modular, { cols: 4, rows: 4, gutterX: 20, gutterY: 20 }); s.grid.radius = 28;
+      s.lines.show = false; s.palette.colors = PALETTES[5].colors.slice(); s.palette.mode = 'none';
+      [[0, 1, 4, 5], [2, 3], [6, 10], [7, 11], [8, 9, 12, 13], [14, 15]].forEach((cells, k) => addGroup(s, newGroup(s, { cells, color: 'p:' + [0, 1, 3, 2, 4, 1][k] })));
+      addText(s, newText({ text: 'Bento\nlayout', font: 'Space Grotesk', weight: 700, size: 92, color: 'p:5', x: 9, y: 9, lh: 1 }));
+    } },
+    { id: 'mandala', name: 'Radial mandala', make: (s) => {
+      setPreset(s, 'ig-square'); s.canvas.margin = 40; s.canvas.bg = '#0F1020';
+      s.grid.type = 'radial'; Object.assign(s.grid.p.radial, { rings: 7, spokes: 16, inner: 8, twist: 11.25, gap: 4, prog: 'exponential', factor: 1.25 });
+      s.grid.inset = 0; s.lines.show = false;
+      s.palette.colors = PALETTES[4].colors.slice(); s.palette.mode = 'row';
+      Object.assign(s.pattern, { on: true, shape: 'circle', size: 34, prog: 'exponential', factor: 1.6, progBy: 'distance', color: 'contrast' });
+    } },
+    { id: 'hex', name: 'Hex mosaic', make: (s) => {
+      setPreset(s, 'ig-portrait'); s.canvas.bg = '#FAF7F0'; s.canvas.margin = 0;
+      s.grid.type = 'polygon'; s.grid.p.polygon.size = 130; s.grid.inset = 5; s.grid.radius = 10;
+      s.palette.colors = PALETTES[3].colors.slice(); s.palette.mode = 'random'; s.palette.seed = 3; s.palette.empty = 15; s.lines.show = false;
+    } },
+    { id: 'truchet', name: 'Truchet tiles', make: (s) => {
+      setPreset(s, 'ig-square'); s.canvas.margin = 0; s.canvas.bg = '#F7F7F2';
+      s.grid.type = 'polygon'; Object.assign(s.grid.p.polygon, { shape: 'square', size: 90 });
+      s.lines.show = false; s.palette.colors = ['#111111', '#F25C54', '#F7F7F2']; s.palette.mode = 'none';
+      Object.assign(s.pattern, { on: true, shape: 'truchet', size: 101, rot90: true, color: 'single', colorIndex: 0 });
+    } },
+    { id: 'web12', name: '12-column web', make: (s) => {
+      setPreset(s, 'web-1440'); s.canvas.margin = 80; s.canvas.bg = '#FFFFFF';
+      s.grid.type = 'modular'; Object.assign(s.grid.p.modular, { cols: 12, rows: 1, gutterX: 24, gutterY: 24 });
+      s.palette.colors = ['#FFE3E3', '#FFF0F0']; s.lines.color = '#FF5A5F'; s.lines.width = 1;
+    } },
+    { id: 'bars', name: 'Exponential bars', make: (s) => {
+      setPreset(s, 'ig-square'); s.canvas.margin = 56; s.canvas.bg = '#F5FBFD';
+      s.grid.type = 'modular'; Object.assign(s.grid.p.modular, { cols: 9, rows: 1, gutterX: 10, progX: 'exponential', factorX: 1.3 });
+      s.grid.radius = 12; s.palette.colors = PALETTES[2].colors.slice(); s.palette.mode = 'gradient'; s.lines.show = false;
+    } },
+    { id: 'weave', name: 'Diagonal weave', make: (s) => {
+      setPreset(s, 'ig-portrait'); s.canvas.margin = 0; s.canvas.bg = '#EDF2F4';
+      s.grid.type = 'diagonal'; Object.assign(s.grid.p.diagonal, { angleA: 45, angleB: 135, s1: 120, s2: 120 });
+      s.grid.curvature = 45; s.grid.inset = 6; s.lines.show = false;
+      s.palette.colors = ['#2B2D42', '#EF233C', '#EDF2F4', '#8D99AE']; s.palette.mode = 'checker';
+    } }
+  ];
+  function fromTemplate(id) {
+    const s = defaults(), t = TEMPLATES.find((x) => x.id === id) || TEMPLATES[0];
+    t.make(s);
+    return s;
+  }
+
+  // Fill in keys missing from older or partial project files.
+  function mergeDefaults(d, s) {
+    if (Array.isArray(d) || typeof d !== 'object' || d === null) return s === undefined ? d : s;
+    const out = {};
+    for (const k in d) out[k] = mergeDefaults(d[k], s ? s[k] : undefined);
+    if (s) for (const k in s) if (!(k in out)) out[k] = s[k];
+    return out;
+  }
+
+  const params = new URLSearchParams(location.search);
+  const EMBED = params.has('embed');
+  const SAVE_KEY = 'gridforge:autosave:' + (params.get('id') || 'default');
+
+  // `root` is the whole project; `st` is the design being edited: root itself, or a cell's sub-canvas reached via `editPath`.
+  let root = null, st = null, editPath = [], parentCell = null;
+  const freshSubs = new Map();
+  let assets = { images: {}, fonts: {} };
+  let undoStack = [], redoStack = [], lastSnap = '';
+  let sel = new Set();
+  let geo = null, activeLayer = null, tab = 'grid', zoom = 0, viewScale = 1, showGuides = true, randSeed = 1, typeRatio = 1.25;
+  let tool = 'move';
+
+  // Visit a design and every nested sub-canvas (in cells and in groups).
+  function walkDocs(d, fn) {
+    fn(d);
+    for (const k in d.cells) if (d.cells[k] && d.cells[k].sub) walkDocs(d.cells[k].sub, fn);
+    for (const g of d.groups || []) if (g.sub) walkDocs(g.sub, fn);
+  }
+  // An edit-path step is a cell index, or 'g:<id>' for a group whose cells share one canvas.
+  const isGroupStep = (k) => typeof k === 'string';
+  const groupStep = (g) => 'g:' + g.id;
+  const subHost = (d, k) => (isGroupStep(k) ? d.groups.find((g) => groupStep(g) === k) : d.cells[k]);
+  const subAt = (d, k) => { const o = subHost(d, k); return o && o.sub; };
+  function dropSub(d, k) {
+    const o = subHost(d, k);
+    if (!o) return;
+    delete o.sub;
+    if (!isGroupStep(k) && !Object.keys(o).length) delete d.cells[k];
+  }
+  // The area a step's canvas fills, as { b, d }: the cell itself or the group outline.
+  const stepArea = (d, geo, k) => (isGroupStep(k) ? (subHost(d, k) ? RD.groupGeom(subHost(d, k), geo, d) : null) : geo.cells[k]);
+  function stepLabel(d, k) {
+    if (!isGroupStep(k)) return 'Cell ' + (k + 1);
+    const g = subHost(d, k);
+    return g ? g.name : 'Group';
+  }
+  function pathLabels() {
+    let d = root;
+    return editPath.map((k) => { const l = stepLabel(d, k); d = subAt(d, k) || d; return l; });
+  }
+  function docAt(path) {
+    let d = root;
+    for (const k of path) d = subAt(d, k);
+    return d;
+  }
+  // Re-point `st` after undo / load, dropping path steps whose sub-canvas no longer exists.
+  function resolveEdit() {
+    let d = root;
+    const ok = [];
+    for (const k of editPath) {
+      const sub = subAt(d, k);
+      if (!sub) break;
+      ok.push(k); d = sub;
+    }
+    editPath = ok; st = d;
+  }
+  // Size each sub-canvas on the edit path to its cell or group; returns the parent design, geometry and area.
+  function syncSubSize() {
+    let d = root, info = null;
+    for (const k of editPath) {
+      const g = C.generate(d), c = stepArea(d, g, k), sub = subAt(d, k);
+      if (!c) return null;
+      sub.canvas.w = C.n2(c.b.w); sub.canvas.h = C.n2(c.b.h);
+      info = { doc: d, geo: g, cell: c, step: k };
+      d = sub;
+    }
+    return info;
+  }
+
+  /* ---------- history & persistence ---------- */
+  const snapshot = () => JSON.stringify(root);
+  let saveTimer = 0, changeTimer = 0;
+  function commit() {
+    const s = snapshot();
+    if (s === lastSnap) return;
+    undoStack.push(lastSnap);
+    if (undoStack.length > 200) undoStack.shift();
+    redoStack = [];
+    lastSnap = s;
+    syncHistoryButtons();
+    clearTimeout(saveTimer); saveTimer = setTimeout(autosave, 700);
+    clearTimeout(changeTimer); changeTimer = setTimeout(() => notifyParent({ type: 'gridforge:change' }), 400);
+  }
+  function resetHistory() { undoStack = []; redoStack = []; lastSnap = snapshot(); syncHistoryButtons(); }
+  function doUndo() {
+    if (!undoStack.length) return;
+    redoStack.push(lastSnap); lastSnap = undoStack.pop(); root = JSON.parse(lastSnap); resolveEdit(); afterLoad();
+  }
+  function doRedo() {
+    if (!redoStack.length) return;
+    undoStack.push(lastSnap); lastSnap = redoStack.pop(); root = JSON.parse(lastSnap); resolveEdit(); afterLoad();
+  }
+  function syncHistoryButtons() {
+    $('#gf-undo').disabled = !undoStack.length;
+    $('#gf-redo').disabled = !redoStack.length;
+  }
+  function usedImages() {
+    const ids = new Set();
+    walkDocs(root, (d) => {
+      for (const k in d.cells) if (d.cells[k].image) ids.add(d.cells[k].image);
+      for (const g of d.groups) if (g.image) ids.add(g.image);
+      for (const id of d.pattern.images || []) ids.add(id);
+    });
+    return ids;
+  }
+  function projectData() {
+    const imgs = {};
+    for (const id of usedImages()) if (assets.images[id]) imgs[id] = assets.images[id];
+    return { app: 'gridforge', version: 1, state: root, assets: { images: imgs, fonts: assets.fonts } };
+  }
+  function autosave() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(projectData())); }
+    catch (e) {
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ app: 'gridforge', version: 1, state: root, assets: { images: {}, fonts: {} } })); } catch (e2) { /* storage unavailable */ }
+    }
+  }
+  function loadProject(obj) {
+    if (!obj || !obj.state || !obj.state.grid) throw new Error('Not a GridMaker project');
+    root = st = mergeDefaults(defaults(), obj.state);
+    walkDocs(root, (d) => {
+      for (const k in d.cells) if (d.cells[k].sub) d.cells[k].sub = mergeDefaults(defaults(), d.cells[k].sub);
+      for (const g of d.groups) if (g.sub) g.sub = mergeDefaults(defaults(), g.sub);
+    });
+    editPath = [];
+    assets = { images: Object.assign({}, obj.assets && obj.assets.images), fonts: Object.assign({}, obj.assets && obj.assets.fonts) };
+    for (const name in assets.fonts) registerFont(name, assets.fonts[name]);
+    sel.clear(); activeLayer = null;
+    resetHistory();
+    afterLoad();
+  }
+  function afterLoad() {
+    if (activeLayer && !st.layers.find((l) => l.id === activeLayer)) activeLayer = null;
+    syncHistoryButtons();
+    refreshAll();
+  }
+
+  /* ---------- rendering ---------- */
+  // rAF keeps slider drags smooth; the timer covers hidden or off-screen iframes where rAF is paused.
+  let raf = 0, rafTimer = 0;
+  function requestRender() {
+    if (raf) return;
+    const run = () => { cancelAnimationFrame(raf); clearTimeout(rafTimer); raf = 0; render(); };
+    raf = requestAnimationFrame(run);
+    rafTimer = setTimeout(run, 120);
+  }
+  function render() {
+    walkDocs(root, (d) => {
+      for (const t of d.texts) ensureFont(t.font);
+      if (d.pattern.on && d.pattern.shape === 'text') ensureFont(d.pattern.font);
+    });
+    const opt = { uid: 'gfe' };
+    parentCell = null;
+    if (editPath.length) {
+      const info = syncSubSize();
+      if (!info) { editPath = []; st = root; sel.clear(); activeLayer = null; refreshAll(); toast('That cell or group no longer exists'); return; }
+      parentCell = info.cell;
+      const pc = isGroupStep(info.step) ? RD.resolve(subHost(info.doc, info.step).color, info.doc.palette.colors) : RD.fillFn(info.doc, info.geo)(info.cell);
+      opt.backdrop = pc || (info.doc.canvas.bgOn !== false ? RD.resolve(info.doc.canvas.bg, info.doc.palette.colors) : null) || '#FFFFFF';
+    }
+    geo = C.generate(st);
+    for (const i of [...sel]) if (i >= geo.cells.length) sel.delete(i);
+    $('#gf-art').innerHTML = RD.build(st, geo, assets, opt);
+    layoutStage();
+    renderOverlay();
+    updateStatus();
+    buildCrumbs();
+  }
+  function buildCrumbs() {
+    const box = $('#gf-crumbs');
+    box.hidden = !editPath.length;
+    box.innerHTML = '';
+    if (!editPath.length) return;
+    box.append(h('button', { class: 'gf-btn small primary', title: 'Back to parent (Esc)', onclick: () => exitTo(editPath.length - 1) }, '← Back'));
+    box.append(h('button', { class: 'gf-crumb', onclick: () => exitTo(0) }, 'Canvas'));
+    pathLabels().forEach((l, k) => {
+      box.append(h('span', { class: 'gf-muted' }, '›'));
+      box.append(h('button', { class: 'gf-crumb' + (k === editPath.length - 1 ? ' on' : ''), onclick: () => exitTo(k + 1) }, l));
+    });
+  }
+  function layoutStage() {
+    const wrap = $('#gf-stage-wrap'), cv = st.canvas;
+    const fit = Math.max(0.02, Math.min((wrap.clientWidth - 48) / cv.w, (wrap.clientHeight - 48) / cv.h));
+    viewScale = zoom || fit;
+    const stage = $('#gf-stage');
+    stage.style.width = Math.round(cv.w * viewScale) + 'px';
+    stage.style.height = Math.round(cv.h * viewScale) + 'px';
+    $('#gf-zoom-label').textContent = Math.round(viewScale * 100) + '%';
+  }
+  function renderOverlay() {
+    const cv = st.canvas, ov = $('#gf-overlay'), sw = 1.5 / viewScale;
+    ov.setAttribute('viewBox', `0 0 ${cv.w} ${cv.h}`);
+    let s = '';
+    if (showGuides && cv.margin > 0) {
+      const R = geo.rect;
+      s += `<rect class="gf-guide" x="${R.x}" y="${R.y}" width="${R.w}" height="${R.h}" stroke-width="${sw}" stroke-dasharray="${6 / viewScale} ${4 / viewScale}"/>`;
+    }
+    const shifted = (c) => { const fx = st.cells[c.i]; return fx && (fx.dx || fx.dy) ? ` transform="translate(${fx.dx || 0} ${fx.dy || 0})"` : ''; };
+    s += '<g class="gf-hits">' + geo.cells.map((c) => `<path d="${c.d}" data-i="${c.i}"${shifted(c)}/>`).join('') + '</g>';
+    if (parentCell) {
+      // dim everything outside the parent cell's shape while editing its sub-canvas
+      const t = `translate(${-parentCell.b.x} ${-parentCell.b.y})`;
+      s += `<defs><mask id="gf-submask"><rect width="${cv.w}" height="${cv.h}" fill="#fff"/><path d="${parentCell.d}" transform="${t}" fill="#000"/></mask></defs>` +
+        `<rect class="gf-outside" width="${cv.w}" height="${cv.h}" mask="url(#gf-submask)"/>` +
+        `<path class="gf-subedge" d="${parentCell.d}" transform="${t}" stroke-width="${sw}"/>`;
+    }
+    const L = st.layers.find((l) => l.id === activeLayer);
+    if (L && L.kind === 'group') {
+      const g = st.groups.find((x) => x.id === L.id), gg = g && RD.groupGeom(g, geo, st);
+      if (gg) s += `<path class="gf-active-group" d="${gg.d}" stroke-width="${sw * 1.5}" stroke-dasharray="${8 / viewScale} ${5 / viewScale}"/>`;
+    }
+    if (sel.size) s += '<g class="gf-sel">' + [...sel].map((i) => `<path d="${geo.cells[i].d}"${shifted(geo.cells[i])} stroke-width="${sw * 1.4}"/>`).join('') + '</g>';
+    const ob = activeObject() && layerBox(activeLayer);
+    if (ob) {
+      const pad = 4 / viewScale, hs = 10 / viewScale;
+      s += `<rect class="gf-objbox" x="${ob.x - pad}" y="${ob.y - pad}" width="${ob.w + 2 * pad}" height="${ob.h + 2 * pad}" stroke-width="${sw}"/>` +
+        `<rect class="gf-handle" data-handle="scale" x="${ob.x + ob.w + pad - hs / 2}" y="${ob.y + ob.h + pad - hs / 2}" width="${hs}" height="${hs}" stroke-width="${sw}"><title>Drag to resize</title></rect>`;
+    }
+    s += '<rect class="gf-marquee" x="0" y="0" width="0" height="0" stroke-width="' + sw + '"/>';
+    ov.innerHTML = s;
+    ov.classList.toggle('gf-tool-move', tool === 'move');
+  }
+  // The text or group layer currently selected as a movable object.
+  function activeObject() {
+    const L = st.layers.find((l) => l.id === activeLayer);
+    return L && L.visible && (L.kind === 'text' || L.kind === 'group') ? L : null;
+  }
+  function layerBox(id) {
+    const el = [...document.querySelectorAll('#gf-art > svg > g[data-layer]')].find((g) => g.getAttribute('data-layer') === id);
+    if (!el) return null;
+    try {
+      const b = el.getBBox();
+      return b.width || b.height ? { x: b.x, y: b.y, w: b.width, h: b.height } : null;
+    } catch (e) { return null; }
+  }
+  function objectAt(p) {
+    for (let k = st.layers.length - 1; k >= 0; k--) {
+      const L = st.layers[k];
+      if (!L.visible || (L.kind !== 'text' && L.kind !== 'group')) continue;
+      const b = layerBox(L.id);
+      if (b && p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) return L;
+    }
+    return null;
+  }
+  function updateStatus() {
+    const cv = st.canvas;
+    let txt = (editPath.length ? `Inside ${pathLabels().join(' › ')} · ` : '') + `${geo.cells.length} cells · ${sel.size} selected · ${Math.round(cv.w)}×${Math.round(cv.h)}px`;
+    if (geo.truncated) txt += ' · cell limit reached (8,000): increase cell size';
+    $('#gf-status-text').textContent = txt;
+    const badge = $('#gf-tab-cells .gf-badge');
+    if (badge) badge.textContent = sel.size ? String(sel.size) : '';
+  }
+
+  /* ---------- controls ---------- */
+  function rangeCtrl(it) {
+    const step = it.step || 1;
+    const row = h('div', { class: 'gf-ctrl gf-range' });
+    const lab = h('label', { title: 'Double-click to reset' }, it.l);
+    const r = h('input', { type: 'range', min: it.min, max: it.max, step, 'aria-label': it.l });
+    const num = h('input', { type: 'number', min: it.min, max: it.max, step, class: 'gf-num', 'aria-label': it.l + ' value' });
+    r.value = num.value = fmt(getP(st, it.k));
+    const apply = (v, live) => {
+      v = +v;
+      if (isNaN(v)) return;
+      v = clamp(v, it.min, it.max);
+      if (step >= 1) v = Math.round(v);
+      setP(st, it.k, fmt(v));
+      r.value = num.value = fmt(v);
+      if (it.on) it.on(v);
+      requestRender();
+      if (!live) commit();
+    };
+    r.addEventListener('input', () => apply(r.value, true));
+    r.addEventListener('change', () => { commit(); if (it.rebuild) buildPanel(); });
+    num.addEventListener('change', () => { apply(num.value, false); if (it.rebuild) buildPanel(); });
+    r.addEventListener('keydown', (e) => {
+      if (!/Arrow/.test(e.key) || !(e.shiftKey || e.altKey)) return;
+      e.preventDefault();
+      const dir = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : -1;
+      apply(+getP(st, it.k) + dir * step * (e.shiftKey ? 10 : 0.1), false);
+    });
+    lab.addEventListener('dblclick', () => { const d = getP(defaults(), it.k); if (d != null) apply(d, false); });
+    row.append(lab);
+    if (it.lock) {
+      const lk = h('button', { class: 'gf-lock' + (st.locks[it.k] ? ' on' : ''), title: 'Lock: Randomise skips this value', 'aria-label': 'Lock ' + it.l, 'aria-pressed': String(!!st.locks[it.k]), html: icon(st.locks[it.k] ? 'lock' : 'unlock') });
+      lk.addEventListener('click', () => {
+        st.locks[it.k] = !st.locks[it.k];
+        lk.classList.toggle('on', st.locks[it.k]);
+        lk.setAttribute('aria-pressed', String(st.locks[it.k]));
+        lk.innerHTML = icon(st.locks[it.k] ? 'lock' : 'unlock');
+        commit();
+      });
+      row.append(lk);
+    }
+    row.append(num, r);
+    return row;
+  }
+  function selectCtrl(it) {
+    const s = h('select', { 'aria-label': it.l }, ...it.o.map(([v, l]) => h('option', { value: v }, l)));
+    s.value = String(getP(st, it.k));
+    s.addEventListener('change', () => {
+      const v = it.num ? +s.value : s.value;
+      setP(st, it.k, v);
+      if (it.on) it.on(v);
+      commit(); requestRender();
+      if (it.rebuild !== false) buildPanel();
+    });
+    return h('div', { class: 'gf-ctrl gf-field' }, h('label', null, it.l), s);
+  }
+  function toggleCtrl(it) {
+    const c = h('input', { type: 'checkbox', role: 'switch', 'aria-label': it.l });
+    c.checked = !!getP(st, it.k);
+    c.addEventListener('change', () => {
+      setP(st, it.k, c.checked);
+      if (it.on) it.on(c.checked);
+      commit(); requestRender();
+      if (it.rebuild) buildPanel();
+    });
+    return h('label', { class: 'gf-ctrl gf-toggle' }, h('span', null, it.l), c);
+  }
+  function textCtrl(it) {
+    const el = h(it.t === 'textarea' ? 'textarea' : 'input', { 'aria-label': it.l, rows: it.t === 'textarea' ? 3 : null });
+    el.value = getP(st, it.k) || '';
+    el.addEventListener('input', () => { setP(st, it.k, el.value); if (it.on) it.on(el.value); requestRender(); });
+    el.addEventListener('change', commit);
+    return h('div', { class: 'gf-ctrl gf-field' }, h('label', null, it.l), el);
+  }
+  function colourField(value, onPick, opts) {
+    opts = opts || {};
+    const pal = st.palette.colors, wrap = h('div', { class: 'gf-swatches' });
+    if (opts.none) wrap.append(h('button', { class: 'gf-sw gf-sw-none' + (value == null ? ' on' : ''), title: 'No fill', 'aria-label': 'No fill', onclick: () => onPick(null) }));
+    pal.forEach((c, i) => {
+      const ref = opts.hex ? c : 'p:' + i;
+      wrap.append(h('button', { class: 'gf-sw' + (value === ref ? ' on' : ''), style: `background:${c}`, title: `Palette ${i + 1} · ${c}`, 'aria-label': `Palette colour ${i + 1}`, onclick: () => onPick(ref) }));
+    });
+    const custom = h('input', { type: 'color', class: 'gf-sw-custom' + (value && value[0] === '#' && !pal.includes(value) ? ' on' : ''), title: 'Custom colour', 'aria-label': 'Custom colour' });
+    custom.value = value && value[0] === '#' ? value.slice(0, 7) : '#888888';
+    custom.addEventListener('input', () => onPick(custom.value.toUpperCase(), true));
+    custom.addEventListener('change', () => onPick(custom.value.toUpperCase()));
+    wrap.append(custom);
+    return wrap;
+  }
+  function colourCtrl(it) {
+    const field = colourField(getP(st, it.k), (v, live) => {
+      setP(st, it.k, v);
+      if (it.on) it.on(v);
+      requestRender();
+      if (!live) { commit(); buildPanel(); }
+    }, { none: it.none, hex: it.hex });
+    return h('div', { class: 'gf-ctrl gf-field' }, h('label', null, it.l), field);
+  }
+  function buttonsCtrl(it) {
+    return h('div', { class: 'gf-btns' }, ...it.items.filter(Boolean).map((b) =>
+      h('button', { class: 'gf-btn' + (b.primary ? ' primary' : '') + (b.danger ? ' danger' : ''), title: b.title || null, onclick: b.on, html: (b.icon ? icon(b.icon) : '') + `<span>${escH(b.l)}</span>` })));
+  }
+  function control(it) {
+    switch (it.t) {
+      case 'sec': return h('h4', { class: 'gf-sec' }, it.l);
+      case 'note': return h('p', { class: 'gf-note' }, it.l);
+      case 'range': return rangeCtrl(it);
+      case 'select': return selectCtrl(it);
+      case 'toggle': return toggleCtrl(it);
+      case 'text': case 'textarea': return textCtrl(it);
+      case 'colour': return colourCtrl(it);
+      case 'buttons': return buttonsCtrl(it);
+      case 'custom': return typeof it.el === 'function' ? it.el() : it.el;
+      default: return null;
+    }
+  }
+
+  /* ---------- panel schemas ---------- */
+  function gridSchema() {
+    const t = st.grid.type, P = 'grid.p.' + t + '.', p = st.grid.p[t];
+    const items = [{ t: 'sec', l: (GRID_TYPES.find((x) => x.id === t) || {}).name }];
+    if (t === 'modular') items.push(
+      { t: 'range', k: P + 'cols', l: 'Columns', min: 1, max: 48, lock: 1, rnd: [1, 12] },
+      { t: 'range', k: P + 'rows', l: 'Rows', min: 1, max: 48, lock: 1, rnd: [1, 12] },
+      { t: 'range', k: P + 'gutterX', l: p.link ? 'Gutter' : 'Column gutter', min: 0, max: 200, lock: 1, rnd: [0, 40], on: (v) => { if (p.link) p.gutterY = v; } },
+      { t: 'range', k: P + 'gutterY', l: 'Row gutter', min: 0, max: 200, lock: 1, rnd: [0, 40], show: () => !p.link },
+      { t: 'toggle', k: P + 'link', l: 'Link gutters', rebuild: true, on: (v) => { if (v) p.gutterY = p.gutterX; } },
+      { t: 'select', k: P + 'progX', l: 'Column widths', o: PROG_OPTS, rnd: true },
+      { t: 'range', k: P + 'factorX', l: 'Column ratio', min: 0.25, max: 4, step: 0.01, lock: 1, rnd: [0.7, 1.7], show: () => p.progX !== 'equal' },
+      { t: 'select', k: P + 'progY', l: 'Row heights', o: PROG_OPTS, rnd: true },
+      { t: 'range', k: P + 'factorY', l: 'Row ratio', min: 0.25, max: 4, step: 0.01, lock: 1, rnd: [0.7, 1.7], show: () => p.progY !== 'equal' }
+    );
+    if (t === 'golden') items.push(
+      { t: 'range', k: P + 'ratio', l: 'Ratio', min: 1.05, max: 3, step: 0.001, lock: 1, rnd: [1.3, 2.2] },
+      { t: 'buttons', items: [['φ 1.618', 1.618], ['√2 1.414', 1.414], ['√3 1.732', 1.732], ['Silver 2.414', 2.414], ['3:2', 1.5]].map(([l, v]) => ({ l, on: () => { p.ratio = v; commit(); buildPanel(); requestRender(); } })) },
+      { t: 'range', k: P + 'depth', l: 'Subdivisions', min: 1, max: 16, lock: 1, rnd: [3, 10] },
+      { t: 'select', k: P + 'start', l: 'First cut', num: true, o: [['0', 'Left'], ['1', 'Top'], ['2', 'Right'], ['3', 'Bottom']], rnd: true },
+      { t: 'toggle', k: P + 'flipX', l: 'Mirror horizontally' },
+      { t: 'toggle', k: P + 'flipY', l: 'Mirror vertically' },
+      { t: 'toggle', k: P + 'spiral', l: 'Show spiral' }
+    );
+    if (t === 'radial') items.push(
+      { t: 'range', k: P + 'rings', l: 'Rings', min: 1, max: 40, lock: 1, rnd: [2, 12] },
+      { t: 'range', k: P + 'spokes', l: 'Segments', min: 1, max: 96, lock: 1, rnd: [3, 32] },
+      { t: 'range', k: P + 'inner', l: 'Inner radius %', min: 0, max: 90, lock: 1, rnd: [0, 40] },
+      { t: 'range', k: P + 'scale', l: 'Outer radius %', min: 20, max: 200, lock: 1 },
+      { t: 'range', k: P + 'cx', l: 'Centre X %', min: 0, max: 100, step: 0.5, lock: 1 },
+      { t: 'range', k: P + 'cy', l: 'Centre Y %', min: 0, max: 100, step: 0.5, lock: 1 },
+      { t: 'range', k: P + 'start', l: 'Start angle°', min: -180, max: 180, lock: 1 },
+      { t: 'range', k: P + 'sweep', l: 'Sweep°', min: 10, max: 360, lock: 1 },
+      { t: 'range', k: P + 'twist', l: 'Twist per ring°', min: -45, max: 45, step: 0.25, lock: 1, rnd: [-20, 20] },
+      { t: 'range', k: P + 'gap', l: 'Gap', min: 0, max: 40, step: 0.5, lock: 1, rnd: [0, 12] },
+      { t: 'select', k: P + 'prog', l: 'Ring spacing', o: PROG_OPTS, rnd: true },
+      { t: 'range', k: P + 'factor', l: 'Ring ratio', min: 0.5, max: 2.5, step: 0.01, lock: 1, rnd: [0.75, 1.5], show: () => p.prog !== 'equal' }
+    );
+    if (t === 'polygon') items.push(
+      { t: 'select', k: P + 'shape', l: 'Tile', o: [['hex', 'Hexagon'], ['square', 'Square'], ['triangle', 'Triangle'], ['octagon', 'Octagon + square'], ['brick', 'Brick'], ['ngon', 'Any polygon (n sides)']], rnd: true },
+      { t: 'range', k: P + 'sides', l: 'Number of sides', min: 3, max: 24, lock: 1, rnd: [3, 12], show: () => p.shape === 'ngon' },
+      { t: 'buttons', show: () => p.shape === 'ngon', items: [3, 4, 5, 6, 7, 8, 10, 12].map((n) => ({ l: String(n), primary: p.sides === n, on: () => { p.sides = n; commit(); buildPanel(); requestRender(); } })) },
+      { t: 'select', k: P + 'packing', l: 'Arrangement', o: [['staggered', 'Staggered rows'], ['square', 'Square rows']], show: () => p.shape === 'ngon' },
+      { t: 'range', k: P + 'polyScale', l: 'Polygon size %', min: 20, max: 160, lock: 1, rnd: [70, 115], show: () => p.shape === 'ngon' },
+      { t: 'range', k: P + 'spin', l: 'Polygon spin°', min: -180, max: 180, lock: 1, rnd: [0, 60], show: () => p.shape === 'ngon' },
+      { t: 'range', k: P + 'size', l: p.shape === 'ngon' ? 'Spacing' : 'Tile size', min: 10, max: 400, lock: 1, rnd: [50, 180] },
+      { t: 'range', k: P + 'offsetX', l: 'Offset X', min: -200, max: 200, lock: 1 },
+      { t: 'range', k: P + 'offsetY', l: 'Offset Y', min: -200, max: 200, lock: 1 }
+    );
+    if (t === 'diagonal') items.push(
+      { t: 'range', k: P + 'angleA', l: 'Angle A°', min: 0, max: 180, lock: 1, rnd: [0, 80] },
+      { t: 'range', k: P + 'angleB', l: 'Angle B°', min: 0, max: 180, lock: 1, rnd: [100, 180] },
+      { t: 'range', k: P + 's1', l: 'Spacing A', min: 10, max: 400, lock: 1, rnd: [50, 180] },
+      { t: 'range', k: P + 's2', l: 'Spacing B', min: 10, max: 400, lock: 1, rnd: [50, 180] },
+      { t: 'range', k: P + 'offsetX', l: 'Offset X', min: -200, max: 200, lock: 1 },
+      { t: 'range', k: P + 'offsetY', l: 'Offset Y', min: -200, max: 200, lock: 1 }
+    );
+    items.push(
+      { t: 'sec', l: 'Transform & edges' },
+      { t: 'range', k: 'grid.rotation', l: 'Rotation°', min: -180, max: 180, lock: 1, rnd: [-30, 30] },
+      { t: 'range', k: 'grid.inset', l: 'Cell gap (inset)', min: 0, max: 80, step: 0.5, lock: 1, rnd: [0, 12] },
+      { t: 'range', k: 'grid.curvature', l: 'Edge curvature', min: -100, max: 100, lock: 1, rnd: [-60, 60] },
+      { t: 'range', k: 'grid.radius', l: 'Corner radius', min: 0, max: 150, lock: 1, rnd: [0, 30] },
+      t === 'radial' ? { t: 'note', l: 'Radial cells already follow arcs, so curvature and corner radius apply to the other grid types.' } : null,
+      { t: 'sec', l: 'Grid lines' },
+      { t: 'toggle', k: 'lines.show', l: 'Show lines', rebuild: true },
+      { t: 'colour', k: 'lines.color', l: 'Line colour', show: () => st.lines.show },
+      { t: 'range', k: 'lines.width', l: 'Line width', min: 0, max: 24, step: 0.25, show: () => st.lines.show },
+      { t: 'buttons', items: [{ l: 'Randomise', icon: 'dice', primary: true, on: randomise, title: 'Randomise unlocked values (R)' }, { l: 'Reset grid', on: resetGrid }] }
+    );
+    return items.filter(Boolean);
+  }
+
+  function styleSchema() {
+    return [
+      { t: 'sec', l: 'Palette' },
+      { t: 'custom', el: paletteEditor },
+      { t: 'custom', el: paletteTools },
+      { t: 'sec', l: 'Apply to cells' },
+      { t: 'select', k: 'palette.mode', l: 'Colour mode', o: [['sequential', 'Sequential'], ['random', 'Random (seeded)'], ['row', 'By row / ring'], ['column', 'By column / segment'], ['checker', 'Checkerboard'], ['gradient', 'Linear gradient'], ['radial', 'Radial gradient'], ['none', 'No fill']] },
+      { t: 'range', k: 'palette.seed', l: 'Seed', min: 1, max: 999, show: () => st.palette.mode === 'random' || st.palette.empty > 0 },
+      { t: 'range', k: 'palette.empty', l: 'Empty cells %', min: 0, max: 95, rebuild: true },
+      { t: 'range', k: 'palette.opacity', l: 'Fill opacity', min: 0, max: 1, step: 0.01 },
+      { t: 'sec', l: 'Background' },
+      { t: 'toggle', k: 'canvas.bgOn', l: 'Show background (off = transparent export)', rebuild: true },
+      { t: 'colour', k: 'canvas.bg', l: 'Background colour', hex: true, show: () => st.canvas.bgOn !== false }
+    ];
+  }
+
+  function patternSchema() {
+    const p = st.pattern, P = 'pattern.';
+    const shaped = () => p.shape === 'polygon' || p.shape === 'star';
+    const isImg = () => p.shape === 'image', isText = () => p.shape === 'text';
+    return [
+      { t: 'toggle', k: P + 'on', l: 'Pattern on', rebuild: true },
+      { t: 'note', l: 'Place one shape, image or piece of text per cell and repeat it across the grid. Sizes can grow equally or exponentially.' },
+      { t: 'sec', l: 'Motif' },
+      { t: 'select', k: P + 'shape', l: 'Shape', o: [['circle', 'Circle'], ['polygon', 'Polygon'], ['star', 'Star'], ['ring', 'Ring'], ['cross', 'Cross'], ['leaf', 'Leaf'], ['quarter', 'Quarter circle'], ['truchet', 'Truchet arcs'], ['semicircle', 'Semicircle'], ['line', 'Bar'], ['image', 'Image (upload)'], ['text', 'Text']],
+        on: (v) => { p.on = true; if (v === 'image' && !(p.images || []).length) pickPatternImages(); } },
+      { t: 'range', k: P + 'sides', l: p.shape === 'star' ? 'Points' : 'Sides', min: 3, max: 16, show: shaped },
+      { t: 'range', k: P + 'inner', l: 'Inner radius %', min: 5, max: 95, show: () => p.shape === 'star' },
+      { t: 'range', k: P + 'morph', l: 'Angle → curve (morph to circle)', min: 0, max: 100, show: () => p.shape === 'polygon' },
+      { t: 'custom', el: patternImages, show: isImg },
+      { t: 'select', k: P + 'imgFit', l: 'Image fit', o: [['meet', 'Whole image'], ['slice', 'Crop to square']], show: isImg },
+      { t: 'select', k: P + 'imgOrder', l: 'Several images', o: [['sequence', 'Cycle in order'], ['random', 'Random (seeded)']], show: () => isImg() && p.images.length > 1 },
+      { t: 'textarea', k: P + 'text', l: 'Text', show: isText },
+      { t: 'select', k: P + 'textMode', l: 'Spread text', o: [['letters', 'One letter per cell'], ['words', 'One word per cell'], ['whole', 'Whole text in every cell']], show: isText },
+      { t: 'custom', el: () => fontPicker(p), show: isText },
+      { t: 'select', k: P + 'weight', l: 'Weight', num: true, o: [['300', 'Light'], ['400', 'Regular'], ['500', 'Medium'], ['600', 'Semibold'], ['700', 'Bold'], ['800', 'Extrabold'], ['900', 'Black']], show: isText },
+      { t: 'range', k: P + 'size', l: 'Size % of cell', min: 5, max: 200 },
+      { t: 'toggle', k: P + 'clipCell', l: 'Clip motif to cell shape' },
+      { t: 'sec', l: 'Repeat' },
+      { t: 'select', k: P + 'target', l: 'Place in', o: [['all', 'All cells'], ['odd', 'Odd cells'], ['even', 'Even cells'], ['checker', 'Checkerboard'], ['nth', 'Every nth cell'], ['random', 'Random share'], ['cells', 'Saved selection']] },
+      { t: 'range', k: P + 'nth', l: 'n', min: 2, max: 20, show: () => p.target === 'nth' },
+      { t: 'range', k: P + 'pct', l: 'Share %', min: 1, max: 100, show: () => p.target === 'random' },
+      { t: 'buttons', items: [{ l: `Use current selection (${sel.size})`, on: () => { p.cells = [...sel]; p.target = 'cells'; p.on = true; commit(); buildPanel(); requestRender(); } }] },
+      { t: 'select', k: P + 'prog', l: 'Size progression', o: PROG_OPTS },
+      { t: 'range', k: P + 'factor', l: 'Progression ratio', min: 0.25, max: 4, step: 0.01, show: () => p.prog !== 'equal' },
+      { t: 'select', k: P + 'progBy', l: 'Progress along', o: [['index', 'Cell order'], ['row', 'Rows / rings'], ['col', 'Columns / segments'], ['distance', 'Distance from centre']], show: () => p.prog !== 'equal' },
+      { t: 'range', k: P + 'rotate', l: 'Rotation°', min: -180, max: 180 },
+      { t: 'range', k: P + 'rotStep', l: 'Rotation step°', min: -90, max: 90, step: 0.5 },
+      { t: 'toggle', k: P + 'rot90', l: 'Random 90° turns (Truchet)' },
+      { t: 'toggle', k: P + 'flipAlt', l: 'Mirror every other' },
+      { t: 'range', k: P + 'seed', l: 'Seed', min: 1, max: 999, show: () => p.rot90 || p.target === 'random' },
+      { t: 'sec', l: 'Colour & style', show: () => !isImg() },
+      { t: 'select', k: P + 'color', l: 'Colour', o: [['step', 'Step through palette'], ['single', 'Single colour'], ['contrast', 'Best contrast to cell']], show: () => !isImg() },
+      { t: 'custom', el: () => h('div', { class: 'gf-ctrl gf-field' }, h('label', null, p.color === 'step' ? 'Start colour' : 'Colour'),
+        colourField('p:' + p.colorIndex, (v) => { if (v && v.slice(0, 2) === 'p:') { p.colorIndex = +v.slice(2); commit(); buildPanel(); requestRender(); } }, {})), show: () => p.color !== 'contrast' && !isImg() },
+      { t: 'range', k: P + 'colorStep', l: 'Colour step', min: 0, max: 6, show: () => p.color === 'step' && !isImg() },
+      { t: 'select', k: P + 'style', l: 'Style', o: [['fill', 'Filled'], ['outline', 'Outline']], show: () => !isImg() },
+      { t: 'range', k: P + 'strokeW', l: 'Outline width', min: 0.25, max: 30, step: 0.25, show: () => p.style === 'outline' && !isImg() }
+    ].map((it) => (it.t === 'custom' && it.show && !it.show() ? null : it)).filter(Boolean);
+  }
+
+  function cellsSchema() {
+    const n = sel.size;
+    const items = [
+      { t: 'sec', l: n ? `${n} cell${n > 1 ? 's' : ''} selected` : 'No cells selected' },
+      { t: 'note', l: 'Click a cell, Shift-click to add more, or drag a box across empty space. With the Move tool (V), drag selected cells to move them; the Cells tool (C) only selects. Double-click a cell to open it as its own canvas.' },
+      { t: 'buttons', items: [{ l: 'All', on: () => { sel = new Set(geo.cells.map((c) => c.i)); afterSelect(); } }, { l: 'None', on: () => { sel.clear(); afterSelect(); } }, { l: 'Invert', on: () => { sel = new Set(geo.cells.filter((c) => !sel.has(c.i)).map((c) => c.i)); afterSelect(); } }] },
+      { t: 'custom', el: ruleSelector }
+    ];
+    if (n) items.push(
+      { t: 'sec', l: 'Style selected cells' },
+      { t: 'custom', el: () => h('div', { class: 'gf-ctrl gf-field' }, h('label', null, 'Fill'), colourField(commonCellColour(), (v, live) => applyToSel({ color: v }, live), { none: true })) },
+      { t: 'buttons', items: [
+        { l: 'Image in each cell…', icon: 'image', on: () => pickImage((id) => applyToSel({ image: id })) },
+        { l: 'Clear style', on: () => { for (const i of sel) delete st.cells[i]; commit(); buildPanel(); requestRender(); } },
+        { l: 'Knock out', title: 'Hide selected cells (Delete)', on: () => applyToSel({ hidden: true }) },
+        { l: 'Restore', on: () => applyToSel({ hidden: false }) },
+        [...sel].some((i) => st.cells[i] && (st.cells[i].dx || st.cells[i].dy)) ? { l: 'Reset position', on: () => applyToSel({ dx: null, dy: null }) } : null
+      ] },
+      { t: 'sec', l: 'Cell as canvas' },
+      { t: 'note', l: 'Every cell, or a group of cells, can hold its own grid, pattern, groups and text. Double-click a cell to open it, Esc to come back.' },
+      { t: 'buttons', items: subButtons() },
+      { t: 'sec', l: 'Group' },
+      { t: 'buttons', items: [{ l: 'Merge into group', icon: 'group', primary: true, on: mergeSel, title: 'Ctrl+G' }] },
+      { t: 'note', l: 'A group is one layer: give it a single image across all its cells, move it above or below other layers, or offset it to break the grid.' }
+    );
+    return items;
+  }
+
+  function subButtons() {
+    const ids = [...sel], withSub = ids.filter((i) => st.cells[i] && st.cells[i].sub);
+    const canNest = editPath.length < RD.MAX_DEPTH;
+    return [
+      canNest && ids.length === 1 ? { l: withSub.includes(ids[0]) ? 'Edit sub-canvas' : 'Open as canvas', icon: 'grid', primary: true, on: () => enterSub(ids[0]) } : null,
+      canNest && ids.length > 1 ? { l: 'Open selection as one canvas', icon: 'grid', primary: true, title: 'Groups the selected cells and gives them one shared canvas', on: () => { const g = mergeSel(); if (g) enterSub(groupStep(g)); } } : null,
+      canNest && ids.length > 1 ? { l: 'Add grid to each', on: () => {
+        const src = withSub.length ? st.cells[withSub[0]].sub : null;
+        for (const i of ids) if (!(st.cells[i] && st.cells[i].sub)) {
+          const sub = src ? JSON.parse(JSON.stringify(src)) : newSub(st, geo.cells[i]);
+          st.cells[i] = Object.assign({}, st.cells[i], { sub });
+        }
+        commit(); buildPanel(); requestRender();
+        toast(src ? 'Copied the first sub-canvas into each cell' : 'Added a grid to each cell');
+      } } : null,
+      withSub.length ? { l: 'Remove sub-canvas', danger: true, on: () => {
+        for (const i of withSub) { delete st.cells[i].sub; if (!Object.keys(st.cells[i]).length) delete st.cells[i]; }
+        commit(); buildPanel(); requestRender();
+      } } : null,
+      !canNest ? { l: 'Nesting limit reached', title: 'Up to ' + RD.MAX_DEPTH + ' levels', on: () => {} } : null
+    ];
+  }
+
+  function layerSchema() {
+    const L = st.layers.find((l) => l.id === activeLayer);
+    if (!L) return [{ t: 'note', l: 'Pick a layer in the Layers list to edit it. Make groups from the Cells tab, or add text with + Text.' }];
+    const li = st.layers.indexOf(L), LP = 'layers.' + li + '.';
+    const common = [
+      { t: 'sec', l: 'Layer' },
+      { t: 'toggle', k: LP + 'visible', l: 'Visible', on: buildLayers },
+      { t: 'range', k: LP + 'opacity', l: 'Opacity', min: 0, max: 1, step: 0.01 },
+      { t: 'buttons', items: [{ l: 'Bring forward', icon: 'up', on: () => moveLayer(L.id, 1) }, { l: 'Send backward', icon: 'down', on: () => moveLayer(L.id, -1) }] }
+    ];
+    if (L.kind === 'group') {
+      const gi = st.groups.findIndex((g) => g.id === L.id), g = st.groups[gi], P = 'groups.' + gi + '.';
+      const hasImg = () => !!g.image;
+      return [
+        { t: 'sec', l: g.name },
+        { t: 'text', k: P + 'name', l: 'Name', on: buildLayers },
+        { t: 'select', k: P + 'shape', l: 'Shape', o: [['merged', 'Merged block'], ['cells', 'Keep cell shapes (image shows through)']] },
+        { t: 'colour', k: P + 'color', l: 'Fill', none: true },
+        { t: 'sec', l: 'Group as canvas' },
+        { t: 'note', l: g.shape === 'cells' ? 'One canvas spans the whole group and shows through each cell shape.' : 'One canvas fills the merged block.' },
+        { t: 'buttons', items: [
+          editPath.length < RD.MAX_DEPTH ? { l: g.sub ? 'Edit sub-canvas' : 'Open as canvas', icon: 'grid', primary: true, title: 'Or double-click the group', on: () => enterSub(groupStep(g)) }
+            : { l: 'Nesting limit reached', title: 'Up to ' + RD.MAX_DEPTH + ' levels', on: () => {} },
+          g.sub ? { l: 'Remove sub-canvas', danger: true, on: () => { delete g.sub; commit(); buildPanel(); requestRender(); } } : null
+        ] },
+        { t: 'sec', l: 'Image' },
+        { t: 'buttons', items: [
+          { l: g.image ? 'Replace image…' : 'Add image…', icon: 'image', primary: !g.image, on: () => pickImage((id) => { g.image = id; commit(); buildPanel(); requestRender(); }) },
+          g.image ? { l: 'Remove image', on: () => { g.image = null; commit(); buildPanel(); requestRender(); } } : null
+        ] },
+        { t: 'select', k: P + 'fit', l: 'Fit', o: [['slice', 'Fill (crop)'], ['meet', 'Fit (letterbox)']], show: hasImg },
+        { t: 'range', k: P + 'zoom', l: 'Zoom', min: 0.2, max: 5, step: 0.01, show: hasImg },
+        { t: 'range', k: P + 'panX', l: 'Pan X %', min: -100, max: 100, show: hasImg },
+        { t: 'range', k: P + 'panY', l: 'Pan Y %', min: -100, max: 100, show: hasImg },
+        { t: 'select', k: P + 'filter', l: 'Filter', o: [['none', 'None'], ['grey', 'Greyscale'], ['duotone', 'Duotone (palette)']], show: hasImg },
+        { t: 'sec', l: 'Break the grid' },
+        { t: 'range', k: P + 'offsetX', l: 'Offset X', min: -1000, max: 1000 },
+        { t: 'range', k: P + 'offsetY', l: 'Offset Y', min: -1000, max: 1000 },
+        { t: 'range', k: P + 'scale', l: 'Scale', min: 0.1, max: 5, step: 0.01 },
+        { t: 'range', k: P + 'rotate', l: 'Rotation°', min: -180, max: 180 },
+        { t: 'toggle', k: P + 'outline', l: 'Outline' },
+        { t: 'buttons', items: [
+          { l: 'Select its cells', on: () => { sel = new Set(g.cells); afterSelect(true); } },
+          { l: `Add selected (${sel.size})`, on: () => { g.cells = [...new Set([...g.cells, ...sel])].sort((a, b) => a - b); commit(); requestRender(); } },
+          { l: 'Ungroup', danger: true, on: () => deleteLayer(L.id) }
+        ] }
+      ].concat(common);
+    }
+    if (L.kind === 'text') {
+      const ti = st.texts.findIndex((x) => x.id === L.id), t = st.texts[ti], P = 'texts.' + ti + '.';
+      return [
+        { t: 'sec', l: 'Text' },
+        { t: 'textarea', k: P + 'text', l: 'Text', on: buildLayers },
+        { t: 'custom', el: () => fontPicker(t) },
+        { t: 'select', k: P + 'weight', l: 'Weight', num: true, o: [['300', 'Light'], ['400', 'Regular'], ['500', 'Medium'], ['600', 'Semibold'], ['700', 'Bold'], ['800', 'Extrabold'], ['900', 'Black']] },
+        { t: 'range', k: P + 'size', l: 'Size', min: 8, max: 800, rebuild: true },
+        { t: 'custom', el: () => typeScale(t) },
+        { t: 'colour', k: P + 'color', l: 'Colour' },
+        { t: 'custom', el: () => contrastNote(t) },
+        { t: 'range', k: P + 'x', l: 'X %', min: -20, max: 120, step: 0.1 },
+        { t: 'range', k: P + 'y', l: 'Y %', min: -20, max: 120, step: 0.1 },
+        { t: 'select', k: P + 'anchor', l: 'Align', o: [['start', 'Left'], ['middle', 'Centre'], ['end', 'Right']] },
+        { t: 'range', k: P + 'ls', l: 'Letter spacing', min: -20, max: 100, step: 0.5 },
+        { t: 'range', k: P + 'lh', l: 'Line height', min: 0.6, max: 3, step: 0.01 },
+        { t: 'range', k: P + 'rotate', l: 'Rotation°', min: -180, max: 180 },
+        { t: 'toggle', k: P + 'upper', l: 'Uppercase' },
+        { t: 'buttons', items: [
+          { l: 'Duplicate', on: () => { const c = addText(st, newText(Object.assign({}, t, { id: uid('t'), y: Math.min(95, t.y + 6) }))); activeLayer = c.id; commit(); refreshAll(); } },
+          { l: 'Delete', danger: true, icon: 'trash', on: () => deleteLayer(L.id) }
+        ] }
+      ].concat(common);
+    }
+    const goto = { fills: ['style', 'Edit colours'], lines: ['grid', 'Edit grid lines'], pattern: ['pattern', 'Edit pattern'] }[L.kind];
+    return [
+      { t: 'sec', l: { fills: 'Cell fills', lines: 'Grid lines', pattern: 'Pattern' }[L.kind] },
+      { t: 'buttons', items: [{ l: goto[1], on: () => setTab(goto[0]) }] }
+    ].concat(common);
+  }
+
+  function canvasSchema() {
+    const cv = st.canvas;
+    if (editPath.length) return [
+      { t: 'sec', l: pathLabels()[editPath.length - 1] + ' canvas' },
+      { t: 'note', l: `Size follows the parent ${isGroupStep(editPath[editPath.length - 1]) ? 'group' : 'cell'}: ${Math.round(cv.w)} × ${Math.round(cv.h)} px. Anything outside its shape is clipped.` },
+      { t: 'range', k: 'canvas.margin', l: 'Margin', min: 0, max: Math.max(1, Math.floor(Math.min(cv.w, cv.h) / 2)) },
+      { t: 'select', k: 'canvas.clip', l: 'Clip grid to', o: [['content', 'Inside margins'], ['canvas', 'Whole cell (bleed)']] },
+      { t: 'toggle', k: 'canvas.bgOn', l: 'Own background (off = parent cell shows through)', rebuild: true },
+      { t: 'colour', k: 'canvas.bg', l: 'Background colour', hex: true, show: () => st.canvas.bgOn !== false },
+      { t: 'buttons', items: [
+        { l: '← Back to parent', primary: true, on: () => exitTo(editPath.length - 1) },
+        { l: 'Remove this sub-canvas', danger: true, on: () => {
+          const k = editPath[editPath.length - 1], parent = docAt(editPath.slice(0, -1));
+          editPath.pop(); dropSub(parent, k);
+          resolveEdit(); sel.clear(); activeLayer = null; zoom = 0; commit(); refreshAll();
+        } }
+      ] }
+    ];
+    return [
+      { t: 'sec', l: 'Size' },
+      { t: 'custom', el: () => h('div', { class: 'gf-ctrl gf-field' }, h('label', null, 'Template size'), presetSelect()) },
+      { t: 'select', k: 'canvas.unit', l: 'Units', o: [['px', 'Pixels'], ['mm', 'Millimetres'], ['in', 'Inches']] },
+      { t: 'select', k: 'canvas.dpi', l: 'Resolution', num: true, o: [['72', '72 dpi (screen)'], ['150', '150 dpi'], ['300', '300 dpi (print)']], show: () => cv.unit !== 'px' },
+      { t: 'custom', el: sizeEditor },
+      { t: 'toggle', k: 'canvas.lockRatio', l: 'Lock aspect ratio' },
+      { t: 'buttons', items: [{ l: 'Swap orientation', on: () => { const w = cv.w; cv.w = cv.h; cv.h = w; cv.preset = matchPreset(cv.w, cv.h); commit(); syncTop(); buildPanel(); requestRender(); } }] },
+      { t: 'sec', l: 'Layout area' },
+      { t: 'range', k: 'canvas.margin', l: 'Margin', min: 0, max: 400 },
+      { t: 'select', k: 'canvas.clip', l: 'Clip grid to', o: [['content', 'Inside margins'], ['canvas', 'Whole canvas (bleed)']] },
+      { t: 'custom', el: () => { const c = h('input', { type: 'checkbox', role: 'switch', 'aria-label': 'Show margin guides' }); c.checked = showGuides; c.addEventListener('change', () => { showGuides = c.checked; renderOverlay(); }); return h('label', { class: 'gf-ctrl gf-toggle' }, h('span', null, 'Show margin guides (editor only)'), c); } },
+      { t: 'sec', l: 'Project' },
+      { t: 'buttons', items: [{ l: 'Save project (.json)', on: saveProject }, { l: 'Open project…', on: openProject }, { l: 'New from template', on: () => setTab('grid') }] }
+    ];
+  }
+
+  function buildPanel() {
+    const panel = $('#gf-panel'), scroll = panel.scrollTop;
+    panel.innerHTML = '';
+    const schema = { grid: gridSchema, style: styleSchema, pattern: patternSchema, cells: cellsSchema, layer: layerSchema, canvas: canvasSchema }[tab]();
+    for (const it of schema) {
+      if (!it || (it.show && !it.show())) continue;
+      const el = control(it);
+      if (el) panel.append(el);
+    }
+    panel.scrollTop = scroll;
+  }
+  const TABS = [['grid', 'Grid'], ['style', 'Colour'], ['pattern', 'Pattern'], ['cells', 'Cells'], ['layer', 'Layer'], ['canvas', 'Canvas']];
+  function buildTabs() {
+    const nav = $('#gf-tabs');
+    nav.innerHTML = '';
+    for (const [id, l] of TABS) {
+      nav.append(h('button', { id: 'gf-tab-' + id, role: 'tab', 'aria-selected': String(tab === id), class: 'gf-tab' + (tab === id ? ' on' : ''), onclick: () => setTab(id) },
+        l, id === 'cells' ? h('span', { class: 'gf-badge' }, sel.size ? String(sel.size) : '') : null));
+    }
+  }
+  function setTab(id) { tab = id; buildTabs(); buildPanel(); }
+
+  /* ---------- custom panel parts ---------- */
+  function pickPatternImages() {
+    const p = st.pattern;
+    pickImage((id) => {
+      p.images = (p.images || []).concat(id);
+      p.on = true; p.shape = 'image';
+      commit(); buildPanel(); requestRender();
+    }, true);
+  }
+  function patternImages() {
+    const p = st.pattern, list = h('div', { class: 'gf-thumbs' });
+    (p.images || []).forEach((id, k) => {
+      const src = assets.images[id];
+      list.append(h('div', { class: 'gf-thumb' }, src ? h('img', { src, alt: 'Pattern image ' + (k + 1) }) : h('span', { class: 'gf-muted' }, 'missing'),
+        h('button', { class: 'gf-pal-x', title: 'Remove image', 'aria-label': 'Remove pattern image ' + (k + 1), onclick: () => { p.images.splice(k, 1); commit(); buildPanel(); requestRender(); } }, '×')));
+    });
+    return h('div', { class: 'gf-ctrl gf-field' }, h('label', null, 'Images'), list,
+      h('div', { class: 'gf-btns' }, h('button', { class: 'gf-btn' + ((p.images || []).length ? '' : ' primary'), onclick: pickPatternImages, html: icon('image') + '<span>Upload images…</span>' })));
+  }
+  function paletteEditor() {
+    const wrap = h('div', { class: 'gf-palette' });
+    st.palette.colors.forEach((c, i) => {
+      const inp = h('input', { type: 'color', 'aria-label': `Palette colour ${i + 1}`, title: c });
+      inp.value = c.slice(0, 7);
+      inp.addEventListener('input', () => { st.palette.colors[i] = inp.value.toUpperCase(); requestRender(); });
+      inp.addEventListener('change', () => { commit(); buildPanel(); });
+      const rm = h('button', { class: 'gf-pal-x', title: 'Remove colour', 'aria-label': `Remove colour ${i + 1}`, onclick: () => {
+        if (st.palette.colors.length <= 1) return;
+        st.palette.colors.splice(i, 1); commit(); buildPanel(); requestRender();
+      } }, '×');
+      wrap.append(h('div', { class: 'gf-pal-item' }, inp, rm));
+    });
+    if (st.palette.colors.length < 12) wrap.append(h('button', { class: 'gf-pal-add', title: 'Add colour', 'aria-label': 'Add colour', onclick: () => {
+      const last = st.palette.colors[st.palette.colors.length - 1] || '#888888';
+      st.palette.colors.push(C.harmony(last, 'analogous')[4]); commit(); buildPanel(); requestRender();
+    } }, '+'));
+    return wrap;
+  }
+  function paletteTools() {
+    const pre = h('select', { 'aria-label': 'Preset palettes' }, h('option', { value: '' }, 'Preset palettes…'), ...PALETTES.map((p, i) => h('option', { value: String(i) }, p.name)));
+    pre.addEventListener('change', () => { if (pre.value === '') return; st.palette.colors = PALETTES[+pre.value].colors.slice(); commit(); buildPanel(); requestRender(); });
+    const shuffle = h('button', { class: 'gf-btn', onclick: () => {
+      const a = st.palette.colors;
+      for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+      commit(); buildPanel(); requestRender();
+    } }, 'Shuffle');
+    const base = h('input', { type: 'color', 'aria-label': 'Base colour for harmony', title: 'Base colour' });
+    base.value = (st.palette.colors[1] || st.palette.colors[0] || '#E2583E').slice(0, 7);
+    const scheme = h('select', { 'aria-label': 'Colour harmony' }, ...[['complementary', 'Complementary'], ['analogous', 'Analogous'], ['triadic', 'Triadic'], ['split', 'Split complementary'], ['mono', 'Monochrome']].map(([v, l]) => h('option', { value: v }, l)));
+    const gen = h('button', { class: 'gf-btn', onclick: () => { st.palette.colors = C.harmony(base.value, scheme.value); commit(); buildPanel(); requestRender(); } }, 'Generate');
+    return h('div', { class: 'gf-stack' },
+      h('div', { class: 'gf-inline' }, pre, shuffle),
+      h('div', { class: 'gf-inline' }, base, scheme, gen));
+  }
+  function ruleSelector() {
+    const s = h('select', { 'aria-label': 'Select by rule' }, ...[['odd', 'Odd cells'], ['even', 'Even cells'], ['checker', 'Checkerboard'], ['nth', 'Every nth cell'], ['row', 'Rows of selection'], ['col', 'Columns of selection'], ['random', 'Random 30%']].map(([v, l]) => h('option', { value: v }, l)));
+    const n = h('input', { type: 'number', min: 2, max: 50, value: 3, class: 'gf-num', 'aria-label': 'n', title: 'n for every nth' });
+    const b = h('button', { class: 'gf-btn', onclick: () => selectRule(s.value, +n.value) }, 'Select');
+    return h('div', { class: 'gf-ctrl gf-field' }, h('label', null, 'Select by rule'), h('div', { class: 'gf-inline' }, s, n, b));
+  }
+  function selectRule(rule, n) {
+    const rows = new Set([...sel].map((i) => geo.cells[i].row)), cols = new Set([...sel].map((i) => geo.cells[i].col));
+    const seed = Math.floor(Math.random() * 9973), next = new Set();
+    for (const c of geo.cells) {
+      const ok = rule === 'odd' ? c.i % 2 === 1 : rule === 'even' ? c.i % 2 === 0 : rule === 'checker' ? (c.row + c.col) % 2 === 0
+        : rule === 'nth' ? c.i % Math.max(2, n) === 0 : rule === 'row' ? rows.has(c.row) : rule === 'col' ? cols.has(c.col) : C.hash01(seed, c.i) < 0.3;
+      if (ok) next.add(c.i);
+    }
+    sel = next;
+    afterSelect();
+  }
+  function commonCellColour() {
+    let v;
+    for (const i of sel) { const c = st.cells[i] && st.cells[i].color; if (v === undefined) v = c || null; else if (v !== (c || null)) return undefined; }
+    return v;
+  }
+  function presetSelect() {
+    const s = h('select', { 'aria-label': 'Canvas size' }, ...PRESETS.map(([id, name]) => h('option', { value: id }, name)));
+    s.value = st.canvas.preset;
+    s.addEventListener('change', () => { if (s.value !== 'custom') setPreset(st, s.value); else st.canvas.preset = 'custom'; commit(); syncTop(); buildPanel(); requestRender(); });
+    return s;
+  }
+  function matchPreset(w, hh) { const p = PRESETS.find((x) => x[2] === w && x[3] === hh); return p ? p[0] : 'custom'; }
+  function sizeEditor() {
+    const cv = st.canvas;
+    const toU = (px) => (cv.unit === 'px' ? px : cv.unit === 'mm' ? (px / cv.dpi) * 25.4 : px / cv.dpi);
+    const fromU = (v) => Math.round(cv.unit === 'px' ? v : cv.unit === 'mm' ? (v / 25.4) * cv.dpi : v * cv.dpi);
+    const w = h('input', { type: 'number', min: 1, step: 'any', class: 'gf-num', 'aria-label': 'Width' });
+    const hh = h('input', { type: 'number', min: 1, step: 'any', class: 'gf-num', 'aria-label': 'Height' });
+    w.value = fmt(toU(cv.w)); hh.value = fmt(toU(cv.h));
+    const apply = (which) => {
+      let W = clamp(fromU(+w.value || 1), 16, 12000), H = clamp(fromU(+hh.value || 1), 16, 12000);
+      if (cv.lockRatio) { const r = cv.w / cv.h; if (which === 'w') H = Math.round(W / r); else W = Math.round(H * r); }
+      cv.w = W; cv.h = H; cv.preset = matchPreset(W, H);
+      commit(); syncTop(); buildPanel(); requestRender();
+    };
+    w.addEventListener('change', () => apply('w'));
+    hh.addEventListener('change', () => apply('h'));
+    return h('div', { class: 'gf-ctrl gf-wh' }, h('label', null, 'W'), w, h('label', null, 'H'), hh, h('span', { class: 'gf-muted' }, cv.unit));
+  }
+  function fontPicker(t) {
+    const s = h('select', { 'aria-label': 'Font' }, h('optgroup', { label: 'Google Fonts' }, ...FONTS.map((f) => h('option', { value: f[0] }, f[0]))));
+    const up = Object.keys(assets.fonts);
+    if (up.length) s.append(h('optgroup', { label: 'Uploaded' }, ...up.map((n) => h('option', { value: n }, n))));
+    s.value = t.font;
+    s.addEventListener('change', () => { t.font = s.value; ensureFont(t.font); commit(); requestRender(); });
+    const b = h('button', { class: 'gf-btn', onclick: () => pickFont((name) => { t.font = name; commit(); buildPanel(); requestRender(); }) }, 'Upload…');
+    return h('div', { class: 'gf-ctrl gf-field' }, h('label', null, 'Font'), h('div', { class: 'gf-inline' }, s, b));
+  }
+  function typeScale(t) {
+    const ratios = [['1.2', 'Minor third · 1.2'], ['1.25', 'Major third · 1.25'], ['1.333', 'Perfect fourth · 1.333'], ['1.5', 'Perfect fifth · 1.5'], ['1.618', 'Golden · 1.618']];
+    const s = h('select', { 'aria-label': 'Type scale ratio' }, ...ratios.map(([v, l]) => h('option', { value: v }, l)));
+    s.value = String(typeRatio);
+    const chips = h('div', { class: 'gf-chips' });
+    const draw = () => {
+      typeRatio = +s.value;
+      chips.innerHTML = '';
+      const base = Math.max(8, Math.round(st.canvas.w / 60));
+      for (let k = -1; k <= 7; k++) {
+        const v = Math.round(base * Math.pow(typeRatio, k));
+        chips.append(h('button', { class: 'gf-chip' + (v === t.size ? ' on' : ''), onclick: () => { t.size = v; commit(); buildPanel(); requestRender(); } }, String(v)));
+      }
+    };
+    s.addEventListener('change', draw);
+    draw();
+    return h('div', { class: 'gf-ctrl gf-field' }, h('label', null, 'Type scale'), s, chips);
+  }
+  function contrastNote(t) {
+    const pal = st.palette.colors, col = RD.resolve(t.color, pal) || '#000000';
+    const x = (st.canvas.w * t.x) / 100, y = (st.canvas.h * t.y) / 100 + t.size * 0.4;
+    let bg = st.canvas.bgOn !== false ? RD.resolve(st.canvas.bg, pal) : '#FFFFFF';
+    const fill = RD.fillFn(st, geo), byCell = {};
+    for (const g of st.groups) for (const i of g.cells) byCell[i] = g;
+    for (const c of geo.cells) {
+      if (x < c.b.x || x > c.b.x + c.b.w || y < c.b.y || y > c.b.y + c.b.h) continue;
+      const f = byCell[c.i] ? RD.resolve(byCell[c.i].color, pal) : fill(c);
+      if (f) bg = f;
+    }
+    const r = C.contrast(col, bg);
+    const verdict = r >= 7 ? 'AAA' : r >= 4.5 ? 'AA' : r >= 3 ? 'AA large text only' : 'fails WCAG';
+    return h('p', { class: 'gf-contrast ' + (r >= 4.5 ? 'ok' : r >= 3 ? 'mid' : 'bad') }, `Contrast ${r.toFixed(1)}:1 against ${bg} · ${verdict}`);
+  }
+
+  /* ---------- grid actions ---------- */
+  function randomise() {
+    randSeed = (randSeed * 16807 + 11) % 2147483647;
+    const r = C.rng(randSeed);
+    for (const it of gridSchema()) {
+      if (!it.rnd || st.locks[it.k]) continue;
+      if (it.t === 'range') {
+        const [a, b] = it.rnd, step = it.step || 1;
+        let v = a + r() * (b - a);
+        v = step >= 1 ? Math.round(v) : Math.round(v / step) * step;
+        setP(st, it.k, fmt(v));
+      } else if (it.t === 'select') {
+        const v = it.o[Math.floor(r() * it.o.length)][0];
+        setP(st, it.k, it.num ? +v : v);
+      }
+    }
+    const m = st.grid.p.modular;
+    if (m.link) m.gutterY = m.gutterX;
+    commit(); buildPanel(); requestRender();
+    toast('Randomised · seed ' + randSeed);
+  }
+  function resetGrid() {
+    const d = defaults();
+    st.grid.p[st.grid.type] = d.grid.p[st.grid.type];
+    Object.assign(st.grid, { rotation: 0, inset: 0, curvature: 0, radius: 0 });
+    commit(); buildPanel(); requestRender();
+  }
+  function setGridType(id) {
+    st.grid.type = id;
+    commit(); buildTypes();
+    if (tab !== 'grid') tab = 'grid';
+    buildTabs(); buildPanel(); requestRender();
+  }
+  function applyTemplate(id) {
+    if (editPath.length) {
+      // inside a cell: use the template's design but keep the cell's size, scaling margins and text to fit
+      const s = fromTemplate(id), k = Math.min(st.canvas.w / s.canvas.w, st.canvas.h / s.canvas.h);
+      Object.assign(s.canvas, { preset: 'custom', w: st.canvas.w, h: st.canvas.h, margin: Math.round(s.canvas.margin * k) });
+      for (const t of s.texts) t.size = Math.max(4, Math.round(t.size * k));
+      const pp = s.grid.p;
+      pp.polygon.size = Math.max(10, Math.round(pp.polygon.size * k));
+      pp.diagonal.s1 = Math.max(10, Math.round(pp.diagonal.s1 * k)); pp.diagonal.s2 = Math.max(10, Math.round(pp.diagonal.s2 * k));
+      pp.modular.gutterX = Math.round(pp.modular.gutterX * k); pp.modular.gutterY = Math.round(pp.modular.gutterY * k);
+      s.grid.radius = Math.round(s.grid.radius * k); s.grid.inset = C.n2(s.grid.inset * k); s.lines.width = C.n2(Math.max(0.5, s.lines.width * k));
+      subHost(docAt(editPath.slice(0, -1)), editPath[editPath.length - 1]).sub = s;
+      freshSubs.delete(editPath.join('/'));
+      resolveEdit();
+    } else root = st = fromTemplate(id);
+    sel.clear(); activeLayer = null; zoom = 0;
+    commit(); refreshAll();
+    toast('Template: ' + (TEMPLATES.find((t) => t.id === id) || TEMPLATES[0]).name);
+  }
+
+  /* ---------- selection & cells ---------- */
+  function afterSelect(stay) {
+    renderOverlay(); updateStatus();
+    if (!stay && sel.size && tab !== 'cells') { setTab('cells'); return; }
+    if (tab === 'cells' || tab === 'pattern' || tab === 'layer') buildPanel();
+  }
+  function applyToSel(patch, live) {
+    for (const i of sel) {
+      const fx = Object.assign({}, st.cells[i], patch);
+      for (const k in fx) if (fx[k] == null || fx[k] === false) delete fx[k];
+      if (Object.keys(fx).length) st.cells[i] = fx; else delete st.cells[i];
+    }
+    requestRender();
+    if (!live) { commit(); buildPanel(); }
+  }
+  function mergeSel() {
+    if (!sel.size) { toast('Select cells first'); return; }
+    const g = addGroup(st, newGroup(st, { cells: [...sel].sort((a, b) => a - b), color: 'p:' + ((st.groups.length + 1) % Math.max(1, st.palette.colors.length)) }));
+    activeLayer = g.id;
+    sel.clear();
+    commit(); buildLayers(); setTab('layer'); requestRender();
+    return g;
+  }
+  function groupOfCell(i) { return st.groups.find((g) => g.cells.includes(i)); }
+
+  /* ---------- cells as canvases ---------- */
+  function newSub(parent, c) {
+    const s = defaults(), w = C.n2(c.b.w), hh = C.n2(c.b.h), m = Math.min(w, hh);
+    Object.assign(s.canvas, { preset: 'custom', w, h: hh, margin: 0, bg: '#FFFFFF', bgOn: false });
+    s.grid.type = 'modular';
+    Object.assign(s.grid.p.modular, { cols: 3, rows: 3, gutterX: 0, gutterY: 0 });
+    s.grid.p.polygon.size = Math.max(10, Math.round(m / 3));
+    s.grid.p.diagonal.s1 = s.grid.p.diagonal.s2 = Math.max(10, Math.round(m / 3));
+    s.lines = { show: true, color: parent.lines.color, width: Math.max(0.5, C.n2(parent.lines.width / 2)) };
+    s.palette = Object.assign({}, parent.palette, { colors: parent.palette.colors.slice(), mode: 'none' });
+    return s;
+  }
+  // `k` is a cell index or a group step ('g:<id>'); a group's cells share one canvas.
+  function enterSub(k) {
+    geo = C.generate(st);
+    const c = stepArea(st, geo, k);
+    if (c == null) return;
+    if (editPath.length >= RD.MAX_DEPTH) { toast('Nesting limit: ' + RD.MAX_DEPTH + ' levels'); return; }
+    if (!isGroupStep(k) && groupOfCell(k)) { toast('That cell is in a group: open the group as a canvas, or ungroup it'); return; }
+    if (!subAt(st, k)) {
+      let host = subHost(st, k);
+      if (!host) host = st.cells[k] = {};
+      host.sub = newSub(st, c);
+      freshSubs.set(editPath.concat(k).join('/'), JSON.stringify(host.sub));
+    }
+    const label = stepLabel(st, k);
+    editPath.push(k);
+    resolveEdit();
+    sel.clear(); activeLayer = null; zoom = 0;
+    commit(); refreshAll();
+    toast('Editing ' + label + ' as its own canvas · Esc to go back');
+  }
+  // Leave sub-canvases until `depth` levels remain; untouched new sub-canvases are dropped again.
+  function exitTo(depth) {
+    while (editPath.length > Math.max(0, depth)) {
+      const key = editPath.join('/'), k = editPath[editPath.length - 1];
+      const parent = docAt(editPath.slice(0, -1)), sub = subAt(parent, k);
+      if (sub && freshSubs.get(key) === JSON.stringify(sub)) dropSub(parent, k);
+      freshSubs.delete(key);
+      editPath.pop();
+    }
+    resolveEdit();
+    sel.clear(); activeLayer = null; zoom = 0;
+    commit(); refreshAll();
+  }
+
+  /* ---------- layers ---------- */
+  function layerName(L) {
+    if (L.kind === 'fills') return 'Cell fills';
+    if (L.kind === 'lines') return 'Grid lines';
+    if (L.kind === 'pattern') return 'Pattern';
+    if (L.kind === 'group') { const g = st.groups.find((x) => x.id === L.id); return g ? g.name : 'Group'; }
+    const t = st.texts.find((x) => x.id === L.id);
+    return t ? (t.text.split('\n')[0] || 'Text').slice(0, 24) : 'Text';
+  }
+  const LAYER_ICON = { fills: 'grid', lines: 'grid', pattern: 'shapes', group: 'group', text: 'text' };
+  let dragLayer = null;
+  function buildLayers() {
+    const ul = $('#gf-layers');
+    ul.innerHTML = '';
+    [...st.layers].reverse().forEach((L) => {
+      const li = h('li', { class: 'gf-layer' + (activeLayer === L.id ? ' on' : '') + (L.visible ? '' : ' off'), draggable: 'true', tabindex: '0', 'aria-label': layerName(L) });
+      const eye = h('button', { class: 'gf-icon-btn', title: L.visible ? 'Hide' : 'Show', 'aria-label': (L.visible ? 'Hide ' : 'Show ') + layerName(L), html: icon(L.visible ? 'eye' : 'eyeOff') });
+      eye.addEventListener('click', (e) => { e.stopPropagation(); L.visible = !L.visible; commit(); buildLayers(); requestRender(); if (tab === 'layer') buildPanel(); });
+      const up = h('button', { class: 'gf-icon-btn', title: 'Bring forward', 'aria-label': 'Bring forward', html: icon('up') });
+      up.addEventListener('click', (e) => { e.stopPropagation(); moveLayer(L.id, 1); });
+      const dn = h('button', { class: 'gf-icon-btn', title: 'Send backward', 'aria-label': 'Send backward', html: icon('down') });
+      dn.addEventListener('click', (e) => { e.stopPropagation(); moveLayer(L.id, -1); });
+      li.append(eye, h('span', { class: 'gf-layer-ico', html: icon(LAYER_ICON[L.kind]) }), h('span', { class: 'gf-layer-name' }, layerName(L)), up, dn);
+      const open = () => { activeLayer = L.id; buildLayers(); setTab('layer'); renderOverlay(); };
+      li.addEventListener('click', open);
+      li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+      li.addEventListener('dragstart', (e) => { dragLayer = L.id; li.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', L.id); } catch (err) { /* ignore */ } });
+      li.addEventListener('dragend', () => { dragLayer = null; li.classList.remove('dragging'); });
+      li.addEventListener('dragover', (e) => { if (dragLayer) { e.preventDefault(); li.classList.add('drop'); } });
+      li.addEventListener('dragleave', () => li.classList.remove('drop'));
+      li.addEventListener('drop', (e) => {
+        e.preventDefault(); li.classList.remove('drop');
+        if (!dragLayer || dragLayer === L.id) return;
+        const from = st.layers.findIndex((x) => x.id === dragLayer), to = st.layers.findIndex((x) => x.id === L.id);
+        const [m] = st.layers.splice(from, 1);
+        st.layers.splice(to, 0, m);
+        commit(); buildLayers(); requestRender();
+      });
+      ul.append(li);
+    });
+  }
+  function moveLayer(id, delta) {
+    const i = st.layers.findIndex((l) => l.id === id);
+    if (i < 0) return;
+    const j = clamp(i + delta, 0, st.layers.length - 1);
+    if (i === j) return;
+    const [m] = st.layers.splice(i, 1);
+    st.layers.splice(j, 0, m);
+    commit(); buildLayers(); requestRender();
+    if (tab === 'layer') buildPanel();
+  }
+  function deleteLayer(id) {
+    const L = st.layers.find((l) => l.id === id);
+    if (!L || (L.kind !== 'group' && L.kind !== 'text')) return;
+    st.layers = st.layers.filter((l) => l.id !== id);
+    if (L.kind === 'group') st.groups = st.groups.filter((g) => g.id !== id);
+    else st.texts = st.texts.filter((t) => t.id !== id);
+    if (activeLayer === id) activeLayer = null;
+    commit(); buildLayers(); buildPanel(); requestRender();
+  }
+  function addTextLayer() {
+    const bg = st.canvas.bgOn !== false ? st.canvas.bg : '#FFFFFF';
+    const best = st.palette.colors.indexOf(C.bestContrast(st.palette.colors, bg));
+    const t = addText(st, newText({ text: 'Headline', size: Math.round(st.canvas.w / 11), color: 'p:' + Math.max(0, best), x: 10, y: 10 }));
+    activeLayer = t.id;
+    commit(); buildLayers(); setTab('layer'); requestRender();
+  }
+
+  /* ---------- canvas interaction ---------- */
+  let drag = null, lastDown = null;
+  function svgPoint(e) {
+    const r = $('#gf-overlay').getBoundingClientRect();
+    return { x: ((e.clientX - r.left) / r.width) * st.canvas.w, y: ((e.clientY - r.top) / r.height) * st.canvas.h };
+  }
+  function bindCanvas() {
+    const ov = $('#gf-overlay');
+    ov.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      const now = performance.now();
+      if (lastDown && now - lastDown.t < 400 && Math.hypot(e.clientX - lastDown.x, e.clientY - lastDown.y) < 6) {
+        lastDown = null; drag = null;
+        e.preventDefault();
+        onDouble(e);
+        return;
+      }
+      lastDown = { t: now, x: e.clientX, y: e.clientY };
+      const p = svgPoint(e), add = e.shiftKey || e.metaKey || e.ctrlKey;
+      const ci = e.target.getAttribute && e.target.getAttribute('data-i');
+      ov.setPointerCapture(e.pointerId);
+      const obj = activeObject();
+      if (obj && e.target.getAttribute && e.target.getAttribute('data-handle')) {
+        const b = layerBox(obj.id), t = st.texts.find((x) => x.id === obj.id), g = st.groups.find((x) => x.id === obj.id);
+        const cx = b.x + (t ? 0 : b.w / 2), cy = b.y + (t ? 0 : b.h / 2);
+        drag = { mode: 'scale', x: p.x, y: p.y, cx, cy, d0: Math.max(1, Math.hypot(p.x - cx, p.y - cy)), t, g, v0: t ? t.size : g.scale || 1 };
+        return;
+      }
+      if (tool === 'move' && !e.altKey) {
+        const L = objectAt(p);
+        if (L) {
+          if (activeLayer !== L.id || sel.size) { activeLayer = L.id; sel.clear(); buildLayers(); setTab('layer'); renderOverlay(); updateStatus(); }
+          const t = st.texts.find((x) => x.id === L.id), g = st.groups.find((x) => x.id === L.id);
+          drag = { mode: 'obj', x: p.x, y: p.y, t, g, x0: t ? t.x : g.offsetX || 0, y0: t ? t.y : g.offsetY || 0 };
+          return;
+        }
+        if (ci != null) {
+          const i = +ci, wasSel = sel.has(i);
+          if (!wasSel) { if (!add) sel.clear(); sel.add(i); }
+          if (activeObject()) { activeLayer = null; buildLayers(); }
+          renderOverlay(); updateStatus();
+          const start = {};
+          for (const j of sel) if (!groupOfCell(j)) start[j] = [(st.cells[j] && st.cells[j].dx) || 0, (st.cells[j] && st.cells[j].dy) || 0];
+          drag = { mode: 'cells', x: p.x, y: p.y, i, wasSel, add, start };
+          return;
+        }
+      }
+      if (activeObject()) { activeLayer = null; buildLayers(); }
+      drag = { mode: 'marquee', x: p.x, y: p.y, i: tool === 'move' ? null : ci, add };
+    });
+    ov.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const p = svgPoint(e), dx = p.x - drag.x, dy = p.y - drag.y;
+      if (!drag.moved && Math.hypot(dx, dy) * viewScale > 4) drag.moved = true;
+      if (!drag.moved) return;
+      if (drag.mode === 'obj') {
+        if (drag.t) { drag.t.x = fmt(drag.x0 + (dx / st.canvas.w) * 100); drag.t.y = fmt(drag.y0 + (dy / st.canvas.h) * 100); }
+        else { drag.g.offsetX = Math.round(drag.x0 + dx); drag.g.offsetY = Math.round(drag.y0 + dy); }
+        requestRender();
+      } else if (drag.mode === 'scale') {
+        const f = Math.hypot(p.x - drag.cx, p.y - drag.cy) / drag.d0;
+        if (drag.t) drag.t.size = clamp(Math.round(drag.v0 * f), 4, 2000);
+        else drag.g.scale = clamp(fmt(drag.v0 * f), 0.1, 5);
+        requestRender();
+      } else if (drag.mode === 'cells') {
+        for (const j in drag.start) {
+          const ndx = Math.round(drag.start[j][0] + dx), ndy = Math.round(drag.start[j][1] + dy);
+          const fx = Object.assign({}, st.cells[j], { dx: ndx, dy: ndy });
+          if (!ndx) delete fx.dx;
+          if (!ndy) delete fx.dy;
+          if (Object.keys(fx).length) st.cells[j] = fx; else delete st.cells[j];
+        }
+        requestRender();
+      } else {
+        const m = ov.querySelector('.gf-marquee');
+        m.setAttribute('x', Math.min(p.x, drag.x)); m.setAttribute('y', Math.min(p.y, drag.y));
+        m.setAttribute('width', Math.abs(dx)); m.setAttribute('height', Math.abs(dy));
+        drag.p = p;
+      }
+    });
+    const end = () => {
+      if (!drag) return;
+      const d = drag; drag = null;
+      if (d.mode === 'obj' || d.mode === 'scale') {
+        if (d.moved) { commit(); if (tab === 'layer') buildPanel(); }
+        return;
+      }
+      if (d.mode === 'cells') {
+        if (d.moved) { commit(); afterSelect(); return; }
+        if (d.add && d.wasSel) sel.delete(d.i);
+        else if (!d.add) { sel.clear(); sel.add(d.i); }
+        afterSelect();
+        return;
+      }
+      if (d.moved && d.p) {
+        const x0 = Math.min(d.x, d.p.x), x1 = Math.max(d.x, d.p.x), y0 = Math.min(d.y, d.p.y), y1 = Math.max(d.y, d.p.y);
+        if (!d.add) sel.clear();
+        for (const c of geo.cells) if (c.c[0] >= x0 && c.c[0] <= x1 && c.c[1] >= y0 && c.c[1] <= y1) sel.add(c.i);
+      } else if (d.i != null) {
+        const i = +d.i;
+        if (d.add) { if (sel.has(i)) sel.delete(i); else sel.add(i); }
+        else { sel.clear(); sel.add(i); }
+      } else if (!d.add) sel.clear();
+      afterSelect();
+    };
+    ov.addEventListener('pointerup', end);
+    ov.addEventListener('pointercancel', () => { drag = null; renderOverlay(); });
+    // Double-clicks are detected from pointerdown timing: the overlay is redrawn mid-click, so native dblclick never fires.
+    function onDouble(e) {
+      if (tool === 'move' && !e.altKey) {
+        const L = objectAt(svgPoint(e));
+        if (L && L.kind === 'text') { editTextInline(L.id); return; }
+        if (L) { enterSub('g:' + L.id); return; }
+      }
+      // the overlay is redrawn between the two clicks, so look up the cell under the pointer now
+      const hit = document.elementFromPoint(e.clientX, e.clientY);
+      const i = hit && hit.getAttribute && hit.getAttribute('data-i');
+      if (i == null) return;
+      const g = groupOfCell(+i);
+      enterSub(g ? groupStep(g) : +i);
+    }
+    const wrap = $('#gf-stage-wrap');
+    wrap.addEventListener('wheel', (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      setZoom((zoom || viewScale) * (e.deltaY < 0 ? 1.1 : 1 / 1.1));
+    }, { passive: false });
+    wrap.addEventListener('dragover', (e) => { if ([...(e.dataTransfer.types || [])].includes('Files')) { e.preventDefault(); wrap.classList.add('dropping'); } });
+    wrap.addEventListener('dragleave', (e) => { if (e.target === wrap) wrap.classList.remove('dropping'); });
+    wrap.addEventListener('drop', async (e) => {
+      wrap.classList.remove('dropping');
+      const f = [...e.dataTransfer.files].find((x) => /^image\//.test(x.type));
+      if (!f) return;
+      e.preventDefault();
+      const target = document.elementFromPoint(e.clientX, e.clientY);
+      const ci = target && target.getAttribute && target.getAttribute('data-i');
+      let id;
+      try { id = await addImageFile(f); } catch (err) { toast('Could not read that image'); return; }
+      if (ci != null) {
+        const i = +ci, g = groupOfCell(i);
+        if (g) { g.image = id; activeLayer = g.id; commit(); buildLayers(); setTab('layer'); requestRender(); return; }
+        if (!sel.has(i)) { sel.clear(); sel.add(i); }
+      }
+      if (!sel.size) { toast('Drop the image onto a cell'); return; }
+      applyToSel({ image: id });
+      afterSelect();
+    });
+    const relayout = () => { if (st && geo) { layoutStage(); renderOverlay(); } };
+    new ResizeObserver(relayout).observe(wrap);
+    window.addEventListener('resize', relayout);
+  }
+  function editTextInline(id) {
+    const t = st.texts.find((x) => x.id === id), b = layerBox(id);
+    if (!t || !b) return;
+    const orig = t.text;
+    const ta = h('textarea', { class: 'gf-inline-edit', 'aria-label': 'Edit text', spellcheck: 'false' });
+    ta.value = t.text;
+    Object.assign(ta.style, {
+      left: Math.round(b.x * viewScale) + 'px', top: Math.round(b.y * viewScale) + 'px',
+      width: Math.max(160, Math.round(b.w * viewScale) + 24) + 'px', height: Math.max(48, Math.round(b.h * viewScale) + 12) + 'px',
+      fontSize: clamp(Math.round(t.size * viewScale * 0.6), 12, 36) + 'px'
+    });
+    $('#gf-stage').append(ta);
+    ta.focus(); ta.select();
+    let closed = false;
+    const done = (keep) => {
+      if (closed) return;
+      closed = true;
+      if (!keep) t.text = orig;
+      ta.remove();
+      if (keep && t.text !== orig) commit();
+      buildLayers(); if (tab === 'layer') buildPanel(); requestRender();
+    };
+    ta.addEventListener('input', () => { t.text = ta.value; requestRender(); });
+    ta.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Escape') { e.preventDefault(); done(false); }
+      else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); done(true); }
+    });
+    ta.addEventListener('blur', () => done(true));
+  }
+  function setTool(t) {
+    tool = t;
+    $('#gf-tool-move').classList.toggle('on', t === 'move');
+    $('#gf-tool-cells').classList.toggle('on', t === 'cells');
+    $('#gf-tool-move').setAttribute('aria-pressed', String(t === 'move'));
+    $('#gf-tool-cells').setAttribute('aria-pressed', String(t === 'cells'));
+    if (geo) renderOverlay();
+  }
+  // Arrow keys nudge the selected object or cells (Shift = 10px).
+  function nudge(dx, dy) {
+    const obj = activeObject();
+    if (obj) {
+      const t = st.texts.find((x) => x.id === obj.id), g = st.groups.find((x) => x.id === obj.id);
+      if (t) { t.x = fmt(t.x + (dx / st.canvas.w) * 100); t.y = fmt(t.y + (dy / st.canvas.h) * 100); }
+      else { g.offsetX = (g.offsetX || 0) + dx; g.offsetY = (g.offsetY || 0) + dy; }
+    } else if (sel.size) {
+      for (const i of sel) {
+        if (groupOfCell(i)) continue;
+        const fx = Object.assign({}, st.cells[i]);
+        fx.dx = (fx.dx || 0) + dx; fx.dy = (fx.dy || 0) + dy;
+        if (!fx.dx) delete fx.dx;
+        if (!fx.dy) delete fx.dy;
+        if (Object.keys(fx).length) st.cells[i] = fx; else delete st.cells[i];
+      }
+    } else return false;
+    commit(); requestRender();
+    if (tab === 'layer') buildPanel();
+    return true;
+  }
+  function setZoom(z) {
+    zoom = z ? clamp(z, 0.05, 8) : 0;
+    layoutStage(); renderOverlay();
+  }
+
+  /* ---------- images & fonts ---------- */
+  function readImage(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onerror = reject;
+      fr.onload = () => {
+        if (file.type === 'image/svg+xml') { resolve(fr.result); return; }
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          const M = 2400, s = Math.min(1, M / Math.max(img.width, img.height));
+          if (s >= 1 && file.size < 3e6) { resolve(fr.result); return; }
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          resolve(c.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.9));
+        };
+        img.src = fr.result;
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+  async function addImageFile(file) {
+    const data = await readImage(file);
+    const id = uid('img');
+    assets.images[id] = data;
+    return id;
+  }
+  function pickImage(cb, multiple) {
+    const inp = $('#gf-file-image');
+    inp.multiple = !!multiple;
+    inp.onchange = async () => {
+      const files = [...inp.files];
+      inp.value = '';
+      for (const f of multiple ? files : files.slice(0, 1)) {
+        try { cb(await addImageFile(f)); } catch (e) { toast('Could not read that image'); }
+      }
+    };
+    inp.click();
+  }
+  const loadedFonts = new Set();
+  function googleFontURL(name, weight) {
+    const f = FONTS.find((x) => x[0] === name);
+    if (!f) return null;
+    return `https://fonts.googleapis.com/css2?family=${name.replace(/ /g, '+')}:wght@${weight || f[1]}&display=swap`;
+  }
+  function ensureFont(name) {
+    if (loadedFonts.has(name) || assets.fonts[name]) return;
+    const url = googleFontURL(name);
+    if (!url) return;
+    loadedFonts.add(name);
+    document.head.append(h('link', { rel: 'stylesheet', href: url }));
+    if (document.fonts) document.fonts.load(`400 40px "${name}"`).then(() => requestRender(), () => {});
+  }
+  async function registerFont(name, data) {
+    try { const ff = new FontFace(name, `url(${data})`); await ff.load(); document.fonts.add(ff); requestRender(); } catch (e) { /* unsupported font file */ }
+  }
+  function pickFont(cb) {
+    const inp = $('#gf-file-font');
+    inp.onchange = () => {
+      const f = inp.files[0];
+      inp.value = '';
+      if (!f) return;
+      const name = f.name.replace(/\.[^.]+$/, '').replace(/[^\w\- ]/g, ' ').trim() || 'Custom font';
+      const fr = new FileReader();
+      fr.onload = async () => { assets.fonts[name] = fr.result; await registerFont(name, fr.result); cb(name); toast('Font added: ' + name); };
+      fr.onerror = () => toast('Could not read that font');
+      fr.readAsDataURL(f);
+    };
+    inp.click();
+  }
+
+  /* ---------- export ---------- */
+  function fileBase() { return `gridmaker-${root.grid.type}-${root.canvas.w}x${root.canvas.h}`; }
+  function download(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = h('a', { href: url, download: name });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    notifyParent({ type: 'gridforge:export', name });
+  }
+  function usedFonts() {
+    const m = new Map();
+    walkDocs(root, (d) => {
+      for (const t of d.texts) {
+        const L = d.layers.find((l) => l.id === t.id);
+        if (L && L.visible) m.set(t.font + '|' + t.weight, { name: t.font, weight: t.weight });
+      }
+      const p = d.pattern;
+      if (p.on && p.shape === 'text') m.set(p.font + '|' + p.weight, { name: p.font, weight: p.weight });
+    });
+    return [...m.values()];
+  }
+  function fontCSSLinked() {
+    let css = '';
+    const done = new Set();
+    for (const f of usedFonts()) {
+      if (done.has(f.name)) continue;
+      done.add(f.name);
+      if (assets.fonts[f.name]) css += `@font-face{font-family:"${f.name}";src:url(${assets.fonts[f.name]});}`;
+      else { const u = googleFontURL(f.name); if (u) css = `@import url('${u}');` + css; }
+    }
+    return css;
+  }
+  const toDataURL = (blob) => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
+  // Inline the font files themselves so text survives SVG -> PNG rasterisation.
+  async function fontCSSInline() {
+    let css = '';
+    for (const f of usedFonts()) {
+      if (assets.fonts[f.name]) { css += `@font-face{font-family:"${f.name}";src:url(${assets.fonts[f.name]});}`; continue; }
+      const def = FONTS.find((x) => x[0] === f.name);
+      if (!def) continue;
+      const ws = def[1].split(';').map(Number);
+      const w = ws.reduce((a, b) => (Math.abs(b - f.weight) < Math.abs(a - f.weight) ? b : a), ws[0]);
+      const txt = await (await fetch(googleFontURL(f.name, w))).text();
+      const blocks = txt.split(/(?=\/\*)/).filter((b) => /\/\*\s*latin(-ext)?\s*\*\//.test(b));
+      for (let b of blocks) {
+        const m = b.match(/url\((https:[^)]+)\)/);
+        if (m) b = b.replace(m[1], await toDataURL(await (await fetch(m[1])).blob()));
+        css += b;
+      }
+    }
+    return css;
+  }
+  function svgString(opts) { return RD.build(root, C.generate(root), assets, Object.assign({ uid: 'gf' }, opts)); }
+  function exportSVG(guidesOnly) {
+    const svg = svgString({ guidesOnly, fontCSS: guidesOnly ? '' : fontCSSLinked() });
+    download(new Blob([svg], { type: 'image/svg+xml' }), fileBase() + (guidesOnly ? '-guides' : '') + '.svg');
+  }
+  async function exportRaster(scale, type) {
+    const cv = root.canvas;
+    const s = Math.min(scale, 16384 / Math.max(cv.w, cv.h), Math.sqrt(120e6 / (cv.w * cv.h)));
+    toast('Rendering ' + (type === 'jpeg' ? 'JPG' : 'PNG') + '…');
+    let css = '';
+    try { css = await fontCSSInline(); } catch (e) { css = fontCSSLinked(); }
+    const url = URL.createObjectURL(new Blob([svgString({ fontCSS: css })], { type: 'image/svg+xml' }));
+    try {
+      const img = new Image();
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+      const c = document.createElement('canvas');
+      c.width = Math.round(cv.w * s); c.height = Math.round(cv.h * s);
+      const x = c.getContext('2d');
+      if (type === 'jpeg') { x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, c.width, c.height); }
+      x.drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob((b) => {
+        if (!b) { toast('Export failed: canvas too large'); return; }
+        download(b, `${fileBase()}@${fmt(s)}x.${type === 'jpeg' ? 'jpg' : 'png'}`);
+        if (s < scale) toast(`Exported at ${fmt(s)}× (browser size limit)`);
+      }, 'image/' + type, 0.92);
+    } catch (e) { toast('Export failed'); }
+    finally { URL.revokeObjectURL(url); }
+  }
+  function saveProject() { download(new Blob([JSON.stringify(projectData())], { type: 'application/json' }), fileBase() + '.gridmaker.json'); }
+  function openProject() {
+    const inp = $('#gf-file-json');
+    inp.onchange = () => {
+      const f = inp.files[0];
+      inp.value = '';
+      if (!f) return;
+      const fr = new FileReader();
+      fr.onload = () => { try { loadProject(JSON.parse(fr.result)); toast('Project opened'); } catch (e) { toast('That file is not a GridMaker project'); } };
+      fr.readAsText(f);
+    };
+    inp.click();
+  }
+  function cssCode() {
+    if (st.grid.type !== 'modular') return null;
+    const p = st.grid.p.modular, cv = st.canvas;
+    const tracks = (n, mode, f) => {
+      if (mode === 'equal') return `repeat(${n}, 1fr)`;
+      const w = C.weights(n, mode, f), m = Math.min(...w);
+      return w.map((v) => fmt(v / m) + 'fr').join(' ');
+    };
+    const cols = Math.round(p.cols), rows = Math.round(p.rows);
+    let css = `.gf-grid {\n  display: grid;\n  grid-template-columns: ${tracks(cols, p.progX, p.factorX)};\n  grid-template-rows: ${tracks(rows, p.progY, p.factorY)};\n  column-gap: ${p.gutterX}px;\n  row-gap: ${p.gutterY}px;\n  padding: ${cv.margin}px;\n  aspect-ratio: ${cv.w} / ${cv.h};\n  box-sizing: border-box;\n}\n`;
+    if (st.grid.radius) css += `.gf-grid > * { border-radius: ${st.grid.radius}px; overflow: hidden; }\n`;
+    let html = '<div class="gf-grid">\n';
+    st.groups.forEach((g, k) => {
+      const mem = g.cells.filter((i) => i < geo.cells.length).map((i) => geo.cells[i]);
+      if (!mem.length) return;
+      const r0 = Math.min(...mem.map((c) => c.row)), r1 = Math.max(...mem.map((c) => c.row));
+      const c0 = Math.min(...mem.map((c) => c.col)), c1 = Math.max(...mem.map((c) => c.col));
+      const cls = 'gf-area-' + (k + 1);
+      css += `.${cls} { grid-column: ${c0 + 1} / ${c1 + 2}; grid-row: ${r0 + 1} / ${r1 + 2}; } /* ${g.name} */\n`;
+      html += `  <div class="${cls}"></div>\n`;
+    });
+    if (!st.groups.length) html += `  <!-- ${cols * rows} cells: add one element per cell -->\n  <div></div>\n`;
+    html += '</div>';
+    return `/* CSS Grid generated by GridMaker */\n${css}\n<!-- HTML -->\n${html}`;
+  }
+  function showCode() {
+    const code = cssCode();
+    const body = code
+      ? h('pre', { class: 'gf-code' }, code)
+      : h('p', null, 'CSS Grid code is available for the Column / modular grid. For golden, radial, polygon and diagonal grids, use "SVG — grid guides only" and place it in your layout tool.');
+    openModal('CSS Grid code', body, code ? [{ l: 'Copy', primary: true, on: () => copyText(code) }] : []);
+  }
+  async function copyText(text, msg) {
+    try { await navigator.clipboard.writeText(text); toast(msg || 'Copied'); } catch (e) { toast('Copy is blocked here: use download instead'); }
+  }
+  const EXPORTS = [
+    ['PNG 1×', () => exportRaster(1, 'png')], ['PNG 2×', () => exportRaster(2, 'png')], ['PNG 4×', () => exportRaster(4, 'png')],
+    ['JPG 2×', () => exportRaster(2, 'jpeg')], null,
+    ['SVG (layered)', () => exportSVG(false)], ['SVG — grid guides only', () => exportSVG(true)], ['Copy SVG', () => copyText(svgString({ fontCSS: fontCSSLinked() }), 'SVG copied')],
+    ['CSS Grid code', showCode], null,
+    ['Save project (.json)', saveProject], ['Open project…', openProject]
+  ];
+  function toggleExportMenu(force) {
+    const m = $('#gf-export-menu'), btn = $('#gf-export');
+    const open = force != null ? force : m.hidden;
+    m.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    if (open) { const first = m.querySelector('button'); if (first) first.focus(); }
+  }
+
+  /* ---------- modal & toast ---------- */
+  function openModal(title, body, actions) {
+    const d = $('#gf-modal');
+    d.innerHTML = '';
+    d.append(h('h3', null, title), body, h('div', { class: 'gf-btns gf-modal-actions' },
+      ...(actions || []).map((a) => h('button', { class: 'gf-btn' + (a.primary ? ' primary' : ''), onclick: a.on }, a.l)),
+      h('button', { class: 'gf-btn', onclick: () => d.close() }, 'Close')));
+    d.showModal();
+  }
+  let toastTimer = 0;
+  function toast(msg) {
+    const t = $('#gf-toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  /* ---------- left column ---------- */
+  function buildTypes() {
+    const box = $('#gf-types');
+    box.innerHTML = '';
+    for (const t of GRID_TYPES) {
+      box.append(h('button', { class: 'gf-type' + (st.grid.type === t.id ? ' on' : ''), 'aria-pressed': String(st.grid.type === t.id), onclick: () => setGridType(t.id),
+        html: `<svg viewBox="0 0 40 40" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${t.svg}</svg><span>${t.name}</span>` }));
+    }
+  }
+  function buildTemplates() {
+    const box = $('#gf-templates');
+    box.innerHTML = '';
+    for (const t of TEMPLATES) {
+      const s = fromTemplate(t.id);
+      box.append(h('button', { class: 'gf-template', onclick: () => applyTemplate(t.id), title: 'Start from ' + t.name },
+        h('span', { class: 'gf-strip' }, ...s.palette.colors.slice(0, 6).map((c) => h('i', { style: 'background:' + c }))),
+        h('span', null, t.name)));
+    }
+  }
+
+  /* ---------- top bar & keyboard ---------- */
+  function syncTop() {
+    const pre = $('#gf-preset');
+    pre.value = root.canvas.preset;
+    pre.disabled = !!editPath.length;
+    pre.title = editPath.length ? 'Go back to the main canvas to change its size' : 'Template size';
+  }
+  function refreshAll() {
+    buildTypes(); buildLayers(); buildTabs(); buildPanel(); syncTop(); syncHistoryButtons(); render();
+  }
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('gridforge:theme', t); } catch (e) { /* ignore */ }
+  }
+  function bindTop() {
+    const pre = $('#gf-preset');
+    for (const [id, name] of PRESETS) pre.append(h('option', { value: id }, name));
+    pre.addEventListener('change', () => { if (pre.value !== 'custom') setPreset(root, pre.value); else root.canvas.preset = 'custom'; zoom = 0; commit(); if (tab === 'canvas') buildPanel(); requestRender(); });
+    $('#gf-tool-move').addEventListener('click', () => setTool('move'));
+    $('#gf-tool-cells').addEventListener('click', () => setTool('cells'));
+    $('#gf-undo').addEventListener('click', doUndo);
+    $('#gf-redo').addEventListener('click', doRedo);
+    $('#gf-random').addEventListener('click', randomise);
+    $('#gf-zoom-in').addEventListener('click', () => setZoom((zoom || viewScale) * 1.25));
+    $('#gf-zoom-out').addEventListener('click', () => setZoom((zoom || viewScale) / 1.25));
+    $('#gf-zoom-fit').addEventListener('click', () => setZoom(0));
+    $('#gf-guides').addEventListener('change', (e) => { showGuides = e.target.checked; renderOverlay(); });
+    $('#gf-theme').addEventListener('click', () => setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+    $('#gf-full').addEventListener('click', () => {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => toast('Full screen is not allowed here'));
+    });
+    $('#gf-add-text').addEventListener('click', addTextLayer);
+    const menu = $('#gf-export-menu');
+    for (const e of EXPORTS) menu.append(e ? h('button', { role: 'menuitem', onclick: () => { toggleExportMenu(false); e[1](); } }, e[0]) : h('hr'));
+    $('#gf-export').addEventListener('click', (e) => { e.stopPropagation(); toggleExportMenu(); });
+    document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e.target)) toggleExportMenu(false); });
+  }
+  function bindKeys() {
+    document.addEventListener('keydown', (e) => {
+      const el = e.target, tag = el.tagName;
+      const typing = (tag === 'INPUT' && !/range|checkbox|color|button/.test(el.type)) || tag === 'TEXTAREA' || tag === 'SELECT';
+      const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+      if (mod && k === 'z' && !typing) { e.preventDefault(); if (e.shiftKey) doRedo(); else doUndo(); return; }
+      if (mod && k === 'y' && !typing) { e.preventDefault(); doRedo(); return; }
+      if (typing) return;
+      if (e.key === 'Escape') {
+        toggleExportMenu(false);
+        if (sel.size) { sel.clear(); afterSelect(); }
+        else if (activeObject()) { activeLayer = null; buildLayers(); renderOverlay(); if (tab === 'layer') buildPanel(); }
+        else if (editPath.length) exitTo(editPath.length - 1);
+        return;
+      }
+      if (/^Arrow/.test(e.key) && !mod) {
+        const s = e.shiftKey ? 10 : 1;
+        const dx = e.key === 'ArrowLeft' ? -s : e.key === 'ArrowRight' ? s : 0, dy = e.key === 'ArrowUp' ? -s : e.key === 'ArrowDown' ? s : 0;
+        if (nudge(dx, dy)) e.preventDefault();
+        return;
+      }
+      if (mod && k === 'g') { e.preventDefault(); mergeSel(); return; }
+      if (mod && k === 'a') { e.preventDefault(); sel = new Set(geo.cells.map((c) => c.i)); afterSelect(); return; }
+      if (mod && k === 'e') { e.preventDefault(); toggleExportMenu(); return; }
+      if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft')) {
+        if (!activeLayer) return;
+        e.preventDefault();
+        moveLayer(activeLayer, (e.code === 'BracketRight' ? 1 : -1) * (e.shiftKey ? 99 : 1));
+        return;
+      }
+      if (mod) return;
+      if (k === 'r') randomise();
+      else if (k === 'h') { st.lines.show = !st.lines.show; commit(); requestRender(); if (tab === 'grid') buildPanel(); }
+      else if (k === 't') addTextLayer();
+      else if (k === 'v') setTool('move');
+      else if (k === 'c') setTool('cells');
+      else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (sel.size) { e.preventDefault(); applyToSel({ hidden: true }); }
+        else if (activeObject()) { e.preventDefault(); deleteLayer(activeLayer); }
+      }
+      else if (k === '0') setZoom(0);
+      else if (k === '=' || k === '+') setZoom((zoom || viewScale) * 1.25);
+      else if (k === '-') setZoom((zoom || viewScale) / 1.25);
+    });
+  }
+
+  /* ---------- embed API (parent page <-> iframe) ---------- */
+  function notifyParent(msg) {
+    if (window.parent && window.parent !== window) {
+      try { window.parent.postMessage(Object.assign({ source: 'gridforge' }, msg), '*'); } catch (e) { /* ignore */ }
+    }
+  }
+  function bindMessages() {
+    window.addEventListener('message', (e) => {
+      if (e.source !== window.parent || window.parent === window) return;
+      const m = e.data;
+      if (!m || typeof m !== 'object' || typeof m.type !== 'string' || m.type.indexOf('gridforge:') !== 0) return;
+      const reply = (data) => e.source.postMessage(Object.assign({ source: 'gridforge', id: m.id }, data), e.origin && e.origin !== 'null' ? e.origin : '*');
+      try {
+        if (m.type === 'gridforge:getSVG') reply({ type: 'gridforge:svg', svg: svgString({ fontCSS: fontCSSLinked(), uid: uid('gf') }) });
+        else if (m.type === 'gridforge:getProject') reply({ type: 'gridforge:project', project: projectData() });
+        else if (m.type === 'gridforge:load') { loadProject(m.project); reply({ type: 'gridforge:loaded', ok: true }); }
+        else if (m.type === 'gridforge:template') { applyTemplate(m.template); reply({ type: 'gridforge:loaded', ok: true }); }
+        else if (m.type === 'gridforge:setTheme') { setTheme(m.theme === 'dark' ? 'dark' : 'light'); reply({ type: 'gridforge:ok' }); }
+      } catch (err) { reply({ type: 'gridforge:error', error: String(err && err.message || err) }); }
+    });
+  }
+
+  /* ---------- init ---------- */
+  function init() {
+    if (EMBED) document.documentElement.classList.add('gf-embedded');
+    let theme = params.get('theme');
+    if (!theme) { try { theme = localStorage.getItem('gridforge:theme'); } catch (e) { theme = null; } }
+    if (!theme) theme = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+
+    let loaded = false;
+    const tpl = params.get('template');
+    if (!tpl) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+        if (saved && saved.state) { loadProject(saved); loaded = true; }
+      } catch (e) { /* no autosave */ }
+    }
+    bindTop(); bindKeys(); bindCanvas(); bindMessages(); buildTemplates();
+    if (!loaded) { root = st = fromTemplate(tpl || 'golden'); resetHistory(); }
+    setTool(tool);
+    refreshAll();
+    notifyParent({ type: 'gridforge:ready' });
+  }
+
+  G.app = { getState: () => root, svg: () => svgString({ fontCSS: fontCSSLinked() }), load: loadProject, template: applyTemplate };
+  init();
+})(window.GridForge = window.GridForge || {});
+
+</script>
+<style>#hub-back{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:2147483000;display:flex;align-items:center;gap:6px;height:40px;padding:0 10px 0 8px;max-width:34px;overflow:hidden;white-space:nowrap;border-radius:0 10px 10px 0;background:#fff;color:#111;border:1px solid rgba(0,0,0,.18);border-left:0;font:600 13px/1 system-ui,-apple-system,'Segoe UI',sans-serif;text-decoration:none;box-shadow:0 4px 16px rgba(0,0,0,.45);transition:max-width .2s ease}#hub-back:hover,#hub-back:focus-visible{max-width:140px}#hub-back svg{flex:none}@media print{#hub-back{display:none}}</style>
+<a href="index.html" id="hub-back" title="Back to all tools" aria-label="Back to all tools"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>All tools</a>
+</body>
+</html>
